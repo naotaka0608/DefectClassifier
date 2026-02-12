@@ -1,0 +1,59 @@
+# 傷分類カテゴリ定義
+# このファイルを編集することで分類カテゴリを動的に変更可能
+
+version: "1.0"
+
+categories:
+  # 原因分類（カスタム定義可能）
+  cause:
+    - name: "擦り傷"
+      description: "表面を擦ることで発生した傷"
+      code: "SCRATCH"
+    - name: "打痕"
+      description: "衝撃による凹み"
+      code: "DENT"
+    - name: "切り傷"
+      description: "鋭利な物体による傷"
+      code: "CUT"
+    - name: "腐食"
+      description: "化学的な劣化による傷"
+      code: "CORROSION"
+    - name: "焼け"
+      description: "熱による変色・変形"
+      code: "BURN"
+    - name: "その他"
+      description: "上記に分類できない傷"
+      code: "OTHER"
+
+  # 形状分類
+  shape:
+    - name: "線状"
+      description: "線形の傷"
+      code: "LINEAR"
+    - name: "点状"
+      description: "点状の傷"
+      code: "POINT"
+    - name: "面状"
+      description: "面積を持つ傷"
+      code: "AREA"
+
+  # 深さ分類（カスタム定義可能）
+  depth:
+    - name: "表層"
+      description: "表面のみの浅い傷"
+      code: "SURFACE"
+      severity: 1
+    - name: "中層"
+      description: "中程度の深さの傷"
+      code: "MEDIUM"
+      severity: 2
+    - name: "深層"
+      description: "深い傷"
+      code: "DEEP"
+      severity: 3
+
+# カテゴリ変更時のデフォルト値
+defaults:
+  cause: "その他"
+  shape: "面状"
+  depth: "表層"

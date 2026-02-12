@@ -1,0 +1,55 @@
+[project]
+name = "hantei"
+version = "0.1.0"
+description = "製品検品用傷分類機械学習API"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    # Core ML
+    "torch>=2.1.0",
+    "torchvision>=0.16.0",
+    "timm>=0.9.12",
+    # API Framework
+    "fastapi>=0.109.0",
+    "uvicorn[standard]>=0.27.0",
+    "pydantic>=2.5.0",
+    "python-multipart>=0.0.6",
+    # Data Processing
+    "numpy>=1.26.0",
+    "pillow>=10.2.0",
+    "albumentations>=1.3.1",
+    "opencv-python-headless>=4.9.0",
+    # Configuration
+    "pyyaml>=6.0.1",
+    # Logging
+    "loguru>=0.7.2",
+    # Utilities
+    "tqdm>=4.66.1",
+    "aiofiles>=23.2.1",
+    # UI
+    "streamlit>=1.31.0",
+    "plotly>=5.18.0",
+    "matplotlib>=3.8.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.4.4",
+    "pytest-asyncio>=0.23.3",
+    "pytest-cov>=4.1.0",
+    "httpx>=0.26.0",
+    "ruff>=0.1.14",
+    "mypy>=1.8.0",
+]
+onnx = [
+    "onnx>=1.15.0",
+    "onnxruntime>=1.16.3",
+]
+
+[tool.ruff]
+line-length = 100
+select = ["E", "F", "I", "N", "W"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]

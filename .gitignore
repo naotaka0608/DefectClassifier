@@ -1,0 +1,21 @@
+# Python-generated files
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+
+# Virtual environments
+.venv
+.vscode
+
+# Generated files
+api_response_examples.json
+training_results.png
+*.onnx
+
+# Data and Models
+data/
+checkpoints/
+logs/
