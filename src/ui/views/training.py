@@ -2,6 +2,7 @@
 
 import time
 from pathlib import Path
+import yaml
 
 import plotly.graph_objects as go
 import streamlit as st
@@ -15,12 +16,15 @@ def show_training_page():
     st.markdown("傷分類モデルの学習を実行できます。")
 
     # タブ
-    tab1, tab2 = st.tabs(["🚀 学習実行", "📜 学習履歴"])
+    tab1, tab2, tab3 = st.tabs(["🚀 学習実行", "🖼️ データ拡張", "📜 学習履歴"])
 
     with tab1:
         _show_training_tab()
-
+    
     with tab2:
+        _show_augmentation_settings_tab()
+
+    with tab3:
         _show_history_tab()
 
 
@@ -110,6 +114,109 @@ def _show_training_tab():
                     mime="application/octet-stream",
                     use_container_width=True,
                 )
+
+
+def _show_augmentation_settings_tab():
+    """データ拡張設定タブ"""
+    st.markdown("### 🖼️ データ拡張設定")
+    st.info("学習時に適用されるデータ拡張（Augmentation）パラメータを設定します。過学習を防ぐために重要です。")
+
+    # 設定ファイルパス
+    config_path = Path("config/model_config.yaml")
+
+    # 設定読み込み
+    if config_path.exists():
+        with open(config_path, "r", encoding="utf-8") as f:
+            config = yaml.safe_load(f)
+    else:
+        st.error(f"設定ファイルが見つかりません: {config_path}")
+        return
+
+    aug_config = config.get("augmentation", {})
+
+    with st.form("augmentation_form"):
+        # 1. サイズ設定
+        st.markdown("#### 📏 サイズ設定")
+        col1, col2 = st.columns(2)
+        with col1:
+            resize_w = st.number_input("リサイズ幅 (px)", value=aug_config.get("resize", [256, 256])[0])
+            crop_w = st.number_input("切り出し幅 (px)", value=aug_config.get("crop_size", [224, 224])[0])
+        with col2:
+            resize_h = st.number_input("リサイズ高さ (px)", value=aug_config.get("resize", [256, 256])[1])
+            crop_h = st.number_input("切り出し高さ (px)", value=aug_config.get("crop_size", [224, 224])[1])
+
+        st.markdown("---")
+
+        # 2. 幾何学的変換
+        st.markdown("#### 🔄 幾何学的変換")
+        col1, col2 = st.columns(2)
+        with col1:
+            h_flip = st.slider("水平反転の確率", 0.0, 1.0, aug_config.get("horizontal_flip", 0.5))
+            rotate = st.slider("90度回転の確率", 0.0, 1.0, aug_config.get("random_rotate90", 0.5))
+        with col2:
+            v_flip = st.slider("垂直反転の確率", 0.0, 1.0, aug_config.get("vertical_flip", 0.5))
+
+        st.markdown("---")
+
+        # 3. 色調変化
+        st.markdown("#### 🎨 色調変化 (Color Jitter)")
+        jitter = aug_config.get("color_jitter", {})
+        col1, col2 = st.columns(2)
+        with col1:
+            brightness = st.slider("明るさ変化", 0.0, 1.0, jitter.get("brightness", 0.2))
+            saturation = st.slider("彩度変化", 0.0, 1.0, jitter.get("saturation", 0.2))
+        with col2:
+            contrast = st.slider("コントラスト変化", 0.0, 1.0, jitter.get("contrast", 0.2))
+            hue = st.slider("色相変化", 0.0, 0.5, jitter.get("hue", 0.1))
+
+        st.markdown("---")
+
+        # 4. ノイズ
+        st.markdown("#### 🌫️ ノイズ (Gaussian Noise)")
+        noise = aug_config.get("gaussian_noise", {})
+        noise_prob = st.slider("ノイズ付加確率", 0.0, 1.0, noise.get("probability", 0.3))
+
+        limit = noise.get("var_limit", [10, 50])
+        # var_limit can be int or list. Handle list safely
+        if isinstance(limit, int):
+            limit = [limit, limit]
+
+        noise_limit = st.slider(
+            "ノイズ分散範囲",
+            0, 100,
+            (int(limit[0]), int(limit[1]))
+        )
+
+        submitted = st.form_submit_button("💾 設定を保存", use_container_width=True, type="primary")
+
+        if submitted:
+            # 設定更新
+            new_aug = {
+                "resize": [int(resize_w), int(resize_h)],
+                "crop_size": [int(crop_w), int(crop_h)],
+                "horizontal_flip": float(h_flip),
+                "vertical_flip": float(v_flip),
+                "random_rotate90": float(rotate),
+                "color_jitter": {
+                    "brightness": float(brightness),
+                    "contrast": float(contrast),
+                    "saturation": float(saturation),
+                    "hue": float(hue)
+                },
+                "gaussian_noise": {
+                    "var_limit": [int(noise_limit[0]), int(noise_limit[1])],
+                    "probability": float(noise_prob)
+                }
+            }
+
+            config["augmentation"] = new_aug
+
+            try:
+                with open(config_path, "w", encoding="utf-8") as f:
+                    yaml.dump(config, f, allow_unicode=True, sort_keys=False)
+                st.success("データ拡張設定を保存しました！")
+            except Exception as e:
+                st.error(f"保存に失敗しました: {e}")
 
 
 def _run_training_demo(total_epochs: int):

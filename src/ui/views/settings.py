@@ -1,5 +1,7 @@
 """設定ページ"""
 
+import yaml
+from pathlib import Path
 import streamlit as st
 
 from src.core.category_manager import CategoryManager
@@ -138,6 +140,7 @@ def _show_model_settings_tab():
 
     if st.button("💾 デフォルト設定を保存", use_container_width=True):
         st.success("デフォルト設定を保存しました！")
+
 
 
 def _show_system_info_tab():
