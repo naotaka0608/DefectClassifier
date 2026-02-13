@@ -135,20 +135,15 @@ def main():
         st.markdown("### 📋 メニュー")
         page = st.radio(
             "ページを選択",
-            ["🎯 分類", "📥 受信トレイ", "📂 データセット", "📚 学習", "📊 評価", "⚙️ 設定"],
+            ["📥 受信トレイ", "📂 データセット", "📚 学習", "📊 評価", "🎯 分類", "⚙️ 設定"],
             label_visibility="collapsed",
         )
 
         st.markdown("---")
         st.markdown("### 📌 システム情報")
         st.info("Version: 1.2.0")
-
     # ページルーティング
-    if page == "🎯 分類":
-        from src.ui.views.classify import show_classify_page
-
-        show_classify_page()
-    elif page == "📥 受信トレイ":
+    if page == "📥 受信トレイ":
         from src.ui.views.inbox import show_inbox_page
         
         show_inbox_page()
@@ -164,6 +159,10 @@ def main():
         from src.ui.views.evaluation import show_evaluation_page
 
         show_evaluation_page()
+    elif page == "🎯 分類":
+        from src.ui.views.classify import show_classify_page
+
+        show_classify_page()
     elif page == "⚙️ 設定":
         from src.ui.views.settings import show_settings_page
 

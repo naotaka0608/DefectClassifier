@@ -1,6 +1,8 @@
 """データセット閲覧画面"""
 
 import json
+import shutil
+import uuid
 from pathlib import Path
 from datetime import datetime
 
@@ -28,11 +30,16 @@ def show_dataset_page():
         st.session_state.category_manager = CategoryManager(DEFAULT_CATEGORIES_CONFIG)
     category_manager = st.session_state.category_manager
 
+    # 画像アップロードセクション
+    _show_upload_section(category_manager)
+
+    st.markdown("---")
+
     # アノテーションデータの読み込み
     annotations = _load_annotations()
     
     if not annotations:
-        st.info("データセットは空です。")
+        st.info("データセットは空です。画像をアップロードしてください。")
         return
 
     # DataFrameに変換して操作しやすくする
@@ -85,6 +92,69 @@ def show_dataset_page():
         _show_image_detail(row)
 
 
+def _show_upload_section(category_manager: CategoryManager):
+    """画像アップロードセクションを表示"""
+    with st.expander("📤 画像をアップロードして追加", expanded=False):
+        uploaded_files = st.file_uploader(
+            "画像ファイルを選択 (複数可)", 
+            type=["jpg", "jpeg", "png", "bmp"], 
+            accept_multiple_files=True
+        )
+
+        if uploaded_files:
+            st.markdown("#### ラベルの一括指定")
+            col1, col2, col3 = st.columns(3)
+            
+            with col1:
+                cause = st.selectbox("原因 (Cause)", category_manager.get_categories("cause"), key="upload_cause")
+            with col2:
+                shape = st.selectbox("形状 (Shape)", category_manager.get_categories("shape"), key="upload_shape")
+            with col3:
+                depth = st.selectbox("深さ (Depth)", category_manager.get_categories("depth"), key="upload_depth")
+
+            if st.button(f"💾 {len(uploaded_files)}枚の画像をデータセットに追加", type="primary"):
+                _save_uploaded_images(uploaded_files, cause, shape, depth)
+                st.success(f"{len(uploaded_files)}枚の画像を追加しました！")
+                st.rerun()
+
+
+def _save_uploaded_images(uploaded_files, cause, shape, depth):
+    """アップロードされた画像を保存し、アノテーションを更新"""
+    # ディレクトリ作成
+    IMAGES_DIR.mkdir(parents=True, exist_ok=True)
+    
+    # 既存アノテーション読み込み
+    annotations = _load_annotations()
+    
+    current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+    for file in uploaded_files:
+        # 一意なファイル名を生成
+        file_ext = Path(file.name).suffix
+        unique_name = f"{uuid.uuid4().hex}{file_ext}"
+        save_path = IMAGES_DIR / unique_name
+        
+        # 画像保存
+        with open(save_path, "wb") as f:
+            f.write(file.getbuffer())
+            
+        # アノテーションデータ作成
+        annotation = {
+            "file_name": unique_name,
+            "original_name": file.name,
+            "cause": cause,
+            "shape": shape,
+            "depth": depth,
+            "source": "upload",
+            "added_at": current_time
+        }
+        annotations.append(annotation)
+    
+    # アノテーション保存
+    with open(ANNOTATIONS_FILE, "w", encoding="utf-8") as f:
+        json.dump(annotations, f, ensure_ascii=False, indent=2)
+
+
 def _load_annotations():
     """アノテーションファイルを読み込む"""
     if not ANNOTATIONS_FILE.exists():
@@ -125,6 +195,8 @@ def _show_image_detail(row):
         st.markdown("### ℹ️ メタデータ")
         st.text(f"追加日時: {row.get('added_at', '不明')}")
         st.text(f"ソース: {row.get('source', '不明')}")
+        if "original_name" in row:
+             st.text(f"元ファイル名: {row['original_name']}")
 
 
 def _info_card(title, value, color):
