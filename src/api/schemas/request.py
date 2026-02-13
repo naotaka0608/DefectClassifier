@@ -10,6 +10,7 @@ class PredictRequest(BaseModel):
 
     image_base64: str = Field(..., description="Base64エンコードされた画像")
     return_confidence: bool = Field(default=True, description="信頼度スコアを返すか")
+    model_name: Optional[str] = Field(default=None, description="使用するモデル名")
 
 
 class BatchPredictRequest(BaseModel):
@@ -19,6 +20,7 @@ class BatchPredictRequest(BaseModel):
         ..., max_length=32, description="Base64エンコードされた画像リスト"
     )
     return_confidence: bool = Field(default=True, description="信頼度スコアを返すか")
+    model_name: Optional[str] = Field(default=None, description="使用するモデル名")
 
 
 class TrainRequest(BaseModel):

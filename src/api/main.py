@@ -16,10 +16,62 @@ from loguru import logger
 from src.api.routes import categories, health, predict
 
 
+import yaml
+from src.core.category_manager import CategoryManager
+from src.inference.predictor import DefectPredictor
+from src.api.routes.predict import set_category_manager, set_predictor, set_config
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """アプリケーションライフサイクル"""
     logger.info("Starting Hantei API...")
+    
+    # 設定読み込み
+    config_dir = project_root / "config"
+    model_config_path = config_dir / "model_config.yaml"
+    category_config_path = config_dir / "categories.yaml"
+    
+    try:
+        # カテゴリマネージャー初期化
+        logger.info("Loading category manager...")
+        category_manager = CategoryManager(category_config_path)
+        set_category_manager(category_manager)
+        
+        # モデル設定読み込み
+        with open(model_config_path, "r", encoding="utf-8") as f:
+            model_config = yaml.safe_load(f)
+            
+        # 設定をAPIに反映
+        set_config(model_config)
+            
+        # デフォルトモデルパス
+        # configにパスがない場合はcheckpoints/best_model.pthをデフォルトとするか、
+        # configの構造を確認する必要がある。
+        # 今は一旦 checkpoints/best_model.pth を決め打ちに近い形でロードするか、
+        # configから取るか。train.pyを見ると model_config_path がある。
+        # train.pyでは model_config_path を読んでる。
+        
+        # モデル初期化
+        logger.info("Loading model...")
+        # 仮定: best_model.pth が存在するとする
+        model_path = project_root / "checkpoints" / "best_model.pth"
+        if not model_path.exists():
+            logger.warning(f"Default model not found at {model_path}. Trying final_model.pth")
+            model_path = project_root / "checkpoints" / "final_model.pth"
+            
+        if model_path.exists():
+            predictor = DefectPredictor(
+                model_path=model_path,
+                category_manager=category_manager
+            )
+            set_predictor(predictor)
+            logger.info(f"Model loaded from {model_path}")
+        else:
+            logger.error("No model found! API will return errors for predictions.")
+            
+    except Exception as e:
+        logger.error(f"Failed to initialize: {e}")
+        
     yield
     logger.info("Shutting down Hantei API...")
 

@@ -47,3 +47,6 @@ inference:
   image_size: [224, 224]
   batch_size: 16
   default_threshold: 0.5
+
+api:
+  save_received_images: true

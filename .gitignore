@@ -19,3 +19,10 @@ training_results.png
 data/
 checkpoints/
 logs/
+
+# IDEs
+.idea/
+
+# Temp files
+*.log
+api_response_examples.txt

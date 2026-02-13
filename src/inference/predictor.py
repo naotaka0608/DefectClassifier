@@ -67,6 +67,18 @@ class DefectPredictor:
 
         self.model_version = Path(model_path).stem
 
+    def reload_model(self, model_path: Path | str) -> None:
+        """モデルを再読み込み"""
+        if Path(model_path).stem == self.model_version:
+             return
+
+        print(f"Reloading model from {model_path}...")
+        self.model = DefectClassifier.load(model_path, self.device)
+        self.model.to(self.device)
+        self.model.eval()
+        self.model_version = Path(model_path).stem
+        print(f"Model reloaded: {self.model_version}")
+
     def _decode_image(self, image_base64: str) -> np.ndarray:
         """Base64画像をデコード"""
         image_bytes = base64.b64decode(image_base64)
