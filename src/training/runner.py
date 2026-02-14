@@ -33,12 +33,12 @@ def train_model(
         category_manager = CategoryManager(DEFAULT_CATEGORIES_CONFIG)
 
         # データセット準備
-        # 全データセットを読み込み
         full_dataset = DefectDataset(
             data_dir=DATA_DIR,
             annotation_file=ANNOTATIONS_FILE,
             category_manager=category_manager,
-            is_training=True
+            is_training=True,
+            aug_config=app_config.augmentation,
         )
 
         if len(full_dataset) == 0:

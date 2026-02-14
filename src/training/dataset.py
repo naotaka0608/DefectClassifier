@@ -12,6 +12,7 @@ from PIL import Image
 from torch.utils.data import Dataset
 
 from src.core.category_manager import CategoryManager
+from src.core.config import AugmentationConfig
 from src.core.constants import DATA_DIR, TRAIN_IMAGES_DIR
 from src.core.data_manager import DataManager
 
@@ -26,9 +27,11 @@ class DefectDataset(Dataset):
         category_manager: CategoryManager,
         transform: Optional[Callable] = None,
         is_training: bool = True,
+        aug_config: Optional[AugmentationConfig] = None,
     ):
         self.data_dir = Path(data_dir)
         self.category_manager = category_manager
+        self.aug_config = aug_config or AugmentationConfig()
         self.transform = transform or self._default_transform(is_training)
 
         # アノテーション読み込み
@@ -38,7 +41,6 @@ class DefectDataset(Dataset):
         # image_pathの補完
         for sample in self.samples:
             if "image_path" not in sample and "file_name" in sample:
-                # デフォルトのパス構造を仮定
                 rel_path = TRAIN_IMAGES_DIR.relative_to(DATA_DIR)
                 sample["image_path"] = f"{rel_path}/{sample['file_name']}"
 
@@ -78,21 +80,27 @@ class DefectDataset(Dataset):
             },
         }
 
-    @staticmethod
-    def _default_transform(is_training: bool) -> A.Compose:
-        """デフォルトの変換を取得"""
+    def _default_transform(self, is_training: bool) -> A.Compose:
+        """AugmentationConfig に基づいた変換を構築"""
+        cfg = self.aug_config
         if is_training:
             return A.Compose(
                 [
-                    A.Resize(256, 256),
-                    A.RandomCrop(224, 224),
-                    A.HorizontalFlip(p=0.5),
-                    A.VerticalFlip(p=0.5),
-                    A.RandomRotate90(p=0.5),
+                    A.Resize(cfg.resize[0], cfg.resize[1]),
+                    A.RandomCrop(cfg.crop_size[0], cfg.crop_size[1]),
+                    A.HorizontalFlip(p=cfg.horizontal_flip),
+                    A.VerticalFlip(p=cfg.vertical_flip),
+                    A.RandomRotate90(p=cfg.random_rotate90),
                     A.ColorJitter(
-                        brightness=0.2, contrast=0.2, saturation=0.2, hue=0.1
+                        brightness=cfg.color_jitter["brightness"],
+                        contrast=cfg.color_jitter["contrast"],
+                        saturation=cfg.color_jitter["saturation"],
+                        hue=cfg.color_jitter["hue"],
                     ),
-                    A.GaussNoise(var_limit=(10, 50), p=0.3),
+                    A.GaussNoise(
+                        var_limit=tuple(cfg.gaussian_noise["var_limit"]),
+                        p=cfg.gaussian_noise["probability"],
+                    ),
                     A.Normalize(
                         mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]
                     ),
@@ -102,13 +110,14 @@ class DefectDataset(Dataset):
         else:
             return A.Compose(
                 [
-                    A.Resize(224, 224),
+                    A.Resize(cfg.crop_size[0], cfg.crop_size[1]),
                     A.Normalize(
                         mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]
                     ),
                     ToTensorV2(),
                 ]
             )
+
 
     @staticmethod
     def get_inference_transform() -> A.Compose:

@@ -11,7 +11,7 @@ from typing import Optional
 
 import numpy as np
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 from PIL import Image
 from src.core.logger import logger
 
@@ -27,35 +27,18 @@ from src.inference.predictor import DefectPredictor
 
 router = APIRouter(prefix="/api/v1", tags=["prediction"])
 
-# グローバル変数（実際の実装では依存性注入を使用）
-_predictor: Optional[DefectPredictor] = None
-_category_manager: Optional[CategoryManager] = None
-_config: Optional[dict] = None
 
-
-def get_predictor() -> DefectPredictor:
-    """推論器を取得"""
-    if _predictor is None:
+def _get_predictor(request: Request) -> DefectPredictor:
+    """app.state から推論器を取得"""
+    predictor: Optional[DefectPredictor] = getattr(request.app.state, "predictor", None)
+    if predictor is None:
         raise HTTPException(status_code=503, detail="Model not loaded")
-    return _predictor
+    return predictor
 
 
-def set_predictor(predictor: DefectPredictor):
-    """推論器を設定"""
-    global _predictor
-    _predictor = predictor
-
-
-def set_category_manager(manager: CategoryManager):
-    """カテゴリマネージャーを設定"""
-    global _category_manager
-    _category_manager = manager
-
-
-def set_config(config: dict):
-    """設定をセット"""
-    global _config
-    _config = config
+def _get_config(request: Request) -> Optional[dict]:
+    """app.state から設定を取得"""
+    return getattr(request.app.state, "config", None)
 
 
 def _resolve_model(model_name: str, predictor: DefectPredictor) -> None:
@@ -77,9 +60,9 @@ def _resolve_model(model_name: str, predictor: DefectPredictor) -> None:
         raise HTTPException(status_code=500, detail=f"Failed to load model: {str(e)}")
 
 
-def _save_inference_log(image: Image.Image, result: PredictResponse):
+def _save_inference_log(image: Image.Image, result: PredictResponse, config: Optional[dict]):
     """推論ログ（画像と結果）を保存"""
-    if _config is None or not _config.get("api", {}).get("save_received_images", False):
+    if config is None or not config.get("api", {}).get("save_received_images", False):
         return
 
     try:
@@ -95,8 +78,6 @@ def _save_inference_log(image: Image.Image, result: PredictResponse):
 
         # メタデータ保存
         json_path = save_dir / f"{filename_base}.json"
-        
-        # Pydanticモデルを辞書に変換
         result_dict = result.model_dump()
         
         metadata = {
@@ -118,9 +99,12 @@ def _save_inference_log(image: Image.Image, result: PredictResponse):
 @router.post("/predict", response_model=PredictResponse)
 async def predict_single(
     request: PredictRequest,
-    predictor: DefectPredictor = Depends(get_predictor),
+    raw_request: Request,
 ) -> PredictResponse:
     """単一画像の傷分類を実行"""
+    predictor = _get_predictor(raw_request)
+    config = _get_config(raw_request)
+
     if request.model_name:
         _resolve_model(request.model_name, predictor)
 
@@ -159,7 +143,7 @@ async def predict_single(
         try:
             image_bytes = base64.b64decode(request.image_base64)
             image = Image.open(io.BytesIO(image_bytes)).convert("RGB")
-            _save_inference_log(image, response)
+            _save_inference_log(image, response, config)
         except Exception as e:
             logger.warning(f"Failed to prepare image for logging: {e}")
 
@@ -171,9 +155,12 @@ async def predict_single(
 @router.post("/predict/batch", response_model=BatchPredictResponse)
 async def predict_batch(
     request: BatchPredictRequest,
-    predictor: DefectPredictor = Depends(get_predictor),
+    raw_request: Request,
 ) -> BatchPredictResponse:
     """バッチ画像の傷分類を実行"""
+    predictor = _get_predictor(raw_request)
+    config = _get_config(raw_request)
+
     if request.model_name:
         _resolve_model(request.model_name, predictor)
 
@@ -221,7 +208,7 @@ async def predict_batch(
             
             # ログ保存
             try:
-                _save_inference_log(pil_images[i], response)
+                _save_inference_log(pil_images[i], response, config)
             except Exception as e:
                 logger.warning(f"Failed to save log for batch item {i}: {e}")
 

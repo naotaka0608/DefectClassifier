@@ -1,11 +1,6 @@
 """FastAPI メインアプリケーション"""
 
-import sys
 from pathlib import Path
-
-# プロジェクトルートをパスに追加
-project_root = Path(__file__).parent.parent.parent
-sys.path.insert(0, str(project_root))
 
 from contextlib import asynccontextmanager
 
@@ -20,15 +15,12 @@ import yaml
 from src.core.category_manager import CategoryManager
 from src.core.constants import CHECKPOINTS_DIR, CONFIG_DIR
 from src.inference.predictor import DefectPredictor
-from src.api.routes.predict import set_category_manager, set_predictor, set_config
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """アプリケーションライフサイクル"""
     logger.info("Starting Hantei API...")
     
-    # 設定読み込み
-    # 設定読み込み
     model_config_path = CONFIG_DIR / "model_config.yaml"
     category_config_path = CONFIG_DIR / "categories.yaml"
     
@@ -36,25 +28,15 @@ async def lifespan(app: FastAPI):
         # カテゴリマネージャー初期化
         logger.info("Loading category manager...")
         category_manager = CategoryManager(category_config_path)
-        set_category_manager(category_manager)
+        app.state.category_manager = category_manager
         
         # モデル設定読み込み
         with open(model_config_path, "r", encoding="utf-8") as f:
             model_config = yaml.safe_load(f)
+        app.state.config = model_config
             
-        # 設定をAPIに反映
-        set_config(model_config)
-            
-        # デフォルトモデルパス
-        # configにパスがない場合はcheckpoints/best_model.pthをデフォルトとするか、
-        # configの構造を確認する必要がある。
-        # 今は一旦 checkpoints/best_model.pth を決め打ちに近い形でロードするか、
-        # configから取るか。train.pyを見ると model_config_path がある。
-        # train.pyでは model_config_path を読んでる。
-        
         # モデル初期化
         logger.info("Loading model...")
-        # 仮定: best_model.pth が存在するとする
         model_path = CHECKPOINTS_DIR / "best_model.pth"
         if not model_path.exists():
             logger.warning(f"Default model not found at {model_path}. Trying final_model.pth")
@@ -65,7 +47,7 @@ async def lifespan(app: FastAPI):
                 model_path=model_path,
                 category_manager=category_manager
             )
-            set_predictor(predictor)
+            app.state.predictor = predictor
             logger.info(f"Model loaded from {model_path}")
         else:
             logger.error("No model found! API will return errors for predictions.")
@@ -75,6 +57,7 @@ async def lifespan(app: FastAPI):
         
     yield
     logger.info("Shutting down Hantei API...")
+
 
 
 # FastAPIアプリケーション
