@@ -12,6 +12,8 @@ from src.core.category_manager import CategoryManager
 from src.core.config import DEFAULT_CATEGORIES_CONFIG
 from src.core.constants import INBOX_DIR, TRAIN_IMAGES_DIR
 from src.core.data_manager import DataManager
+from src.ui.components.image_viewer import image_viewer
+from src.ui.components.info_card import info_card
 
 
 def show_inbox_page():
@@ -56,15 +58,9 @@ def _show_detail_view(json_path: Path, category_manager: CategoryManager):
         with open(json_path, "r", encoding="utf-8") as f:
             metadata = json.load(f)
             
-        # 画像パスの解決（絶対パスが変わっている可能性を考慮してファイル名から再構築）
+        # 画像パスの解決
         image_filename = Path(metadata["image_path"]).name
         image_path = INBOX_DIR / image_filename
-        
-        if not image_path.exists():
-            st.error(f"画像ファイルが見つかりません: {image_filename}")
-            return
-            
-        image = Image.open(image_path)
         
     except Exception as e:
         st.error(f"データの読み込みに失敗しました: {e}")
@@ -73,7 +69,7 @@ def _show_detail_view(json_path: Path, category_manager: CategoryManager):
     col1, col2 = st.columns([1, 1])
 
     with col1:
-        st.image(image, caption=f"{json_path.stem}", use_container_width=True)
+        image_viewer(image_path, caption=f"{json_path.stem}")
         
         st.markdown("### 📋 メタデータ")
         st.json(metadata["prediction"], expanded=False)

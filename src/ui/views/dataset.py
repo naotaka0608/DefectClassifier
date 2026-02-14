@@ -14,6 +14,8 @@ from src.core.category_manager import CategoryManager
 from src.core.config import DEFAULT_CATEGORIES_CONFIG
 from src.core.constants import TRAIN_IMAGES_DIR
 from src.core.data_manager import DataManager
+from src.ui.components.image_viewer import image_viewer
+from src.ui.components.info_card import info_card
 
 
 def show_dataset_page():
@@ -153,19 +155,15 @@ def _show_image_detail(row):
     col1, col2 = st.columns([1, 1])
     
     with col1:
-        if image_path.exists():
-            image = Image.open(image_path)
-            st.image(image, caption=row["file_name"], use_container_width=True)
-        else:
-            st.error(f"画像ファイルが見つかりません: {row['file_name']}")
+        image_viewer(image_path, caption=row["file_name"])
             
     with col2:
         st.markdown("### 🏷️ ラベル情報")
         
         # 見やすいカード形式で表示
-        _info_card("原因 (Cause)", row["cause"], "#667eea")
-        _info_card("形状 (Shape)", row["shape"], "#764ba2")
-        _info_card("深さ (Depth)", row["depth"], "#f093fb")
+        info_card("原因 (Cause)", row["cause"], "#667eea")
+        info_card("形状 (Shape)", row["shape"], "#764ba2")
+        info_card("深さ (Depth)", row["depth"], "#f093fb")
         
         st.markdown("---")
         st.markdown("### ℹ️ メタデータ")
@@ -175,20 +173,3 @@ def _show_image_detail(row):
              st.text(f"元ファイル名: {row['original_name']}")
 
 
-def _info_card(title, value, color):
-    """情報カードを表示"""
-    st.markdown(
-        f"""
-        <div style="
-            background-color: {color}20;
-            border-left: 5px solid {color};
-            padding: 10px;
-            margin-bottom: 10px;
-            border-radius: 5px;
-        ">
-            <div style="font-size: 0.8em; color: gray;">{title}</div>
-            <div style="font-size: 1.2em; font-weight: bold;">{value}</div>
-        </div>
-        """,
-        unsafe_allow_html=True
-    )
