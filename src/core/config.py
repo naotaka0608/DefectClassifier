@@ -69,12 +69,16 @@ class AppConfig(BaseModel):
     inference: InferenceConfig = InferenceConfig()
 
 
+
 def load_config(config_path: Path | str) -> AppConfig:
     """設定ファイルを読み込み"""
     config_path = Path(config_path)
 
+    if not config_path.exists():
+        return AppConfig()
+
     with open(config_path, "r", encoding="utf-8") as f:
-        raw_config = yaml.safe_load(f)
+        raw_config = yaml.safe_load(f) or {}
 
     return AppConfig(
         model=ModelConfig(**raw_config.get("model", {})),
@@ -82,6 +86,17 @@ def load_config(config_path: Path | str) -> AppConfig:
         augmentation=AugmentationConfig(**raw_config.get("augmentation", {})),
         inference=InferenceConfig(**raw_config.get("inference", {})),
     )
+
+
+def save_config(config: AppConfig, config_path: Path | str) -> None:
+    """設定ファイルを保存"""
+    config_path = Path(config_path)
+    
+    # 辞書に変換
+    config_dict = config.model_dump()
+    
+    with open(config_path, "w", encoding="utf-8") as f:
+        yaml.dump(config_dict, f, allow_unicode=True, sort_keys=False)
 
 
 # デフォルト設定パス

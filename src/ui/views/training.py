@@ -7,7 +7,7 @@ import yaml
 import plotly.graph_objects as go
 import streamlit as st
 
-from src.core.config import DEFAULT_MODEL_CONFIG, load_config
+from src.core.config import DEFAULT_MODEL_CONFIG, AppConfig, load_config, save_config
 from src.core.constants import CHECKPOINTS_DIR, MODEL_CONFIG_PATH, PROCESSED_DIR
 
 
@@ -151,29 +151,118 @@ def _show_training_tab():
                 _plot_training_history(st.session_state.training_history)
 
 
-def _save_training_config(settings):
+def _show_augmentation_settings_tab():
+    """データ拡張設定タブ"""
+    st.markdown("### 🖼️ データ拡張設定")
+    st.info("学習時のデータ拡張パラメータを設定します。")
+
+    col1, col2 = st.columns(2)
+
+    # 現在の設定を読み込み
+    try:
+        config = load_config(MODEL_CONFIG_PATH)
+        aug_config = config.augmentation
+    except Exception:
+        aug_config = AppConfig().augmentation
+
+    current_settings = {}
+
+    with col1:
+        st.markdown("#### 📏 変形・サイズ")
+        
+        # リサイズ
+        resize_h = st.number_input("リサイズ (高さ)", value=aug_config.resize[0])
+        resize_w = st.number_input("リサイズ (幅)", value=aug_config.resize[1])
+        current_settings["resize"] = [resize_h, resize_w]
+
+        # クロップ
+        crop_h = st.number_input("クロップ (高さ)", value=aug_config.crop_size[0])
+        crop_w = st.number_input("クロップ (幅)", value=aug_config.crop_size[1])
+        current_settings["crop_size"] = [crop_h, crop_w]
+
+        st.markdown("#### 🔄 回転・反転")
+        
+        # フリップ
+        h_flip = st.slider("水平反転確率", 0.0, 1.0, float(aug_config.horizontal_flip))
+        current_settings["horizontal_flip"] = h_flip
+        
+        v_flip = st.slider("垂直反転確率", 0.0, 1.0, float(aug_config.vertical_flip))
+        current_settings["vertical_flip"] = v_flip
+        
+        rotate = st.slider("90度回転確率", 0.0, 1.0, float(aug_config.random_rotate90))
+        current_settings["random_rotate90"] = rotate
+
+    with col2:
+        st.markdown("#### 🎨 色彩変換")
+        
+        brightness = st.slider("明るさ変化", 0.0, 1.0, float(aug_config.color_jitter["brightness"]))
+        contrast = st.slider("コントラスト変化", 0.0, 1.0, float(aug_config.color_jitter["contrast"]))
+        saturation = st.slider("彩度変化", 0.0, 1.0, float(aug_config.color_jitter["saturation"]))
+        hue = st.slider("色相変化", 0.0, 0.5, float(aug_config.color_jitter["hue"]))
+        
+        current_settings["color_jitter"] = {
+            "brightness": brightness,
+            "contrast": contrast,
+            "saturation": saturation,
+            "hue": hue
+        }
+
+        st.markdown("#### 🌫️ ノイズ")
+        
+        noise_prob = st.slider("ガウシアンノイズ確率", 0.0, 1.0, float(aug_config.gaussian_noise["probability"]))
+        noise_limit = st.slider("ノイズ強度上限", 0, 100, int(aug_config.gaussian_noise["var_limit"][1]))
+        
+        current_settings["gaussian_noise"] = {
+            "probability": noise_prob,
+            "var_limit": [10, noise_limit]
+        }
+
+    st.markdown("---")
+    if st.button("💾 データ拡張設定を保存", use_container_width=True):
+        _save_augmentation_config(current_settings)
+        st.success("データ拡張設定を保存しました！")
+
+
+def _save_augmentation_config(settings):
+    """データ拡張設定を保存"""
+    # 既存設定読み込み
+    try:
+        config = load_config(MODEL_CONFIG_PATH)
+    except Exception:
+        config = AppConfig()
+
+    # Configオブジェクト更新
+    config.augmentation.resize = settings["resize"]
+    config.augmentation.crop_size = settings["crop_size"]
+    config.augmentation.horizontal_flip = settings["horizontal_flip"]
+    config.augmentation.vertical_flip = settings["vertical_flip"]
+    config.augmentation.random_rotate90 = settings["random_rotate90"]
+    config.augmentation.color_jitter = settings["color_jitter"]
+    config.augmentation.gaussian_noise = settings["gaussian_noise"]
+
+    # 保存
+    save_config(config, MODEL_CONFIG_PATH)
     """学習設定を保存"""
-    config_path = MODEL_CONFIG_PATH
-    if config_path.exists():
-        with open(config_path, "r", encoding="utf-8") as f:
-            config = yaml.safe_load(f)
-    else:
-        config = {"model": {}, "training": {}}
+    # 既存設定を読み込み（なければデフォルト）
+    AppConfig()
+    try:
+        config = load_config(MODEL_CONFIG_PATH)
+    except Exception:
+        config = AppConfig()
 
-    # モデル設定更新
-    if "model" not in config: config["model"] = {}
-    config["model"]["backbone"] = settings["backbone"]
-    config["model"]["pretrained"] = settings["pretrained"]
-
-    # 学習設定更新
-    if "training" not in config: config["training"] = {}
-    config["training"]["epochs"] = settings["epochs"]
-    config["training"]["batch_size"] = settings["batch_size"]
-    config["training"]["learning_rate"] = settings["learning_rate"]
-    config["training"]["mixed_precision"] = settings["mixed_precision"]
+    # パラメータ更新
+    # model
+    config.model.backbone = settings["backbone"]
+    config.model.pretrained = settings["pretrained"]
     
-    with open(config_path, "w", encoding="utf-8") as f:
-        yaml.dump(config, f, allow_unicode=True, sort_keys=False)
+    # training
+    config.training.epochs = settings["epochs"]
+    config.training.batch_size = settings["batch_size"]
+    config.training.learning_rate = settings["learning_rate"]
+    config.training.mixed_precision = settings["mixed_precision"]
+    
+    # 保存
+    save_config(config, MODEL_CONFIG_PATH)
 
 
 def _plot_training_history(history: dict):

@@ -13,6 +13,7 @@ from torch.utils.data import Dataset
 
 from src.core.category_manager import CategoryManager
 from src.core.constants import DATA_DIR, TRAIN_IMAGES_DIR
+from src.core.data_manager import DataManager
 
 
 class DefectDataset(Dataset):
@@ -31,14 +32,8 @@ class DefectDataset(Dataset):
         self.transform = transform or self._default_transform(is_training)
 
         # アノテーション読み込み
-        with open(annotation_file, "r", encoding="utf-8") as f:
-            data = json.load(f)
-
-        # データ形式の互換性対応
-        if isinstance(data, list):
-            self.samples = data
-        else:
-            self.samples = data.get("samples", [])
+        data_manager = DataManager(annotation_file)
+        self.samples = data_manager.load_annotations()
             
         # image_pathの補完
         for sample in self.samples:

@@ -10,7 +10,8 @@ from PIL import Image
 
 from src.core.category_manager import CategoryManager
 from src.core.config import DEFAULT_CATEGORIES_CONFIG
-from src.core.constants import ANNOTATIONS_FILE, INBOX_DIR, TRAIN_IMAGES_DIR
+from src.core.constants import INBOX_DIR, TRAIN_IMAGES_DIR
+from src.core.data_manager import DataManager
 
 
 def show_inbox_page():
@@ -145,29 +146,14 @@ def _add_to_dataset(image_path: Path, json_path: Path, cause, shape, depth):
         shutil.move(str(image_path), str(target_image_path))
         
         # 2. アノテーションの追記
-        annotation = {
-            "file_name": target_image_path.name,
-            "cause": cause,
-            "shape": shape,
-            "depth": depth,
-            "added_at": datetime.now().isoformat(),
-            "source": "inbox"
-        }
-        
-        annotations = []
-        if ANNOTATIONS_FILE.exists():
-            with open(ANNOTATIONS_FILE, "r", encoding="utf-8") as f:
-                try:
-                    annotations = json.load(f)
-                    if not isinstance(annotations, list): # 古い形式対応
-                        annotations = []
-                except json.JSONDecodeError:
-                    annotations = []
-                    
-        annotations.append(annotation)
-        
-        with open(ANNOTATIONS_FILE, "w", encoding="utf-8") as f:
-            json.dump(annotations, f, ensure_ascii=False, indent=2)
+        data_manager = DataManager()
+        data_manager.add_sample(
+            file_name=target_image_path.name,
+            cause=cause,
+            shape=shape,
+            depth=depth,
+            source="inbox"
+        )
             
         # 3. 元のJSON削除
         json_path.unlink()

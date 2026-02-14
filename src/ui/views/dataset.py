@@ -12,7 +12,8 @@ from PIL import Image
 
 from src.core.category_manager import CategoryManager
 from src.core.config import DEFAULT_CATEGORIES_CONFIG
-from src.core.constants import ANNOTATIONS_FILE, TRAIN_IMAGES_DIR
+from src.core.constants import TRAIN_IMAGES_DIR
+from src.core.data_manager import DataManager
 
 
 def show_dataset_page():
@@ -31,7 +32,8 @@ def show_dataset_page():
     st.markdown("---")
 
     # アノテーションデータの読み込み
-    annotations = _load_annotations()
+    data_manager = DataManager()
+    annotations = data_manager.load_annotations()
     
     if not annotations:
         st.info("データセットは空です。画像をアップロードしてください。")
@@ -119,10 +121,8 @@ def _save_uploaded_images(uploaded_files, cause, shape, depth):
     TRAIN_IMAGES_DIR.mkdir(parents=True, exist_ok=True)
     
     # 既存アノテーション読み込み
-    annotations = _load_annotations()
+    data_manager = DataManager()
     
-    current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-
     for file in uploaded_files:
         # 一意なファイル名を生成
         file_ext = Path(file.name).suffix
@@ -133,51 +133,17 @@ def _save_uploaded_images(uploaded_files, cause, shape, depth):
         with open(save_path, "wb") as f:
             f.write(file.getbuffer())
             
-        # アノテーションデータ作成
-        # DefectDatasetに合わせて image_path を保存 (dataディレクトリからの相対パス)
-        relative_image_path = f"processed/train/images/{unique_name}"
-        
-        annotation = {
-            "image_path": relative_image_path,
-            "file_name": unique_name, # UI表示用に保持
-            "original_name": file.name,
-            "cause": cause,
-            "shape": shape,
-            "depth": depth,
-            "source": "upload",
-            "added_at": current_time
-        }
-        annotations.append(annotation)
-    
-    # アノテーション保存 (辞書形式で保存)
-    with open(ANNOTATIONS_FILE, "w", encoding="utf-8") as f:
-        json.dump({"samples": annotations}, f, ensure_ascii=False, indent=2)
+        # アノテーションデータ作成 (DataManager経由)
+        data_manager.add_sample(
+            file_name=unique_name,
+            cause=cause,
+            shape=shape,
+            depth=depth,
+            source="upload",
+            original_name=file.name
+        )
 
 
-def _load_annotations():
-    """アノテーションファイルを読み込む"""
-    if not ANNOTATIONS_FILE.exists():
-        return []
-    
-    try:
-        with open(ANNOTATIONS_FILE, "r", encoding="utf-8") as f:
-            data = json.load(f)
-            
-            # リスト形式（旧形式）の場合
-            if isinstance(data, list):
-                # マイグレーション：image_pathがない場合は追加
-                for item in data:
-                    if "image_path" not in item and "file_name" in item:
-                        item["image_path"] = f"processed/train/images/{item['file_name']}"
-                return data
-                
-            # 辞書形式（新形式）の場合
-            if isinstance(data, dict) and "samples" in data:
-                return data["samples"]
-                
-            return []
-    except Exception:
-        return []
 
 
 def _show_image_detail(row):
