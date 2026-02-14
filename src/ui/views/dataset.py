@@ -139,8 +139,12 @@ def _save_uploaded_images(uploaded_files, cause, shape, depth):
             f.write(file.getbuffer())
             
         # アノテーションデータ作成
+        # DefectDatasetに合わせて image_path を保存 (dataディレクトリからの相対パス)
+        relative_image_path = f"processed/train/images/{unique_name}"
+        
         annotation = {
-            "file_name": unique_name,
+            "image_path": relative_image_path,
+            "file_name": unique_name, # UI表示用に保持
             "original_name": file.name,
             "cause": cause,
             "shape": shape,
@@ -150,9 +154,9 @@ def _save_uploaded_images(uploaded_files, cause, shape, depth):
         }
         annotations.append(annotation)
     
-    # アノテーション保存
+    # アノテーション保存 (辞書形式で保存)
     with open(ANNOTATIONS_FILE, "w", encoding="utf-8") as f:
-        json.dump(annotations, f, ensure_ascii=False, indent=2)
+        json.dump({"samples": annotations}, f, ensure_ascii=False, indent=2)
 
 
 def _load_annotations():
@@ -163,8 +167,19 @@ def _load_annotations():
     try:
         with open(ANNOTATIONS_FILE, "r", encoding="utf-8") as f:
             data = json.load(f)
+            
+            # リスト形式（旧形式）の場合
             if isinstance(data, list):
+                # マイグレーション：image_pathがない場合は追加
+                for item in data:
+                    if "image_path" not in item and "file_name" in item:
+                        item["image_path"] = f"processed/train/images/{item['file_name']}"
                 return data
+                
+            # 辞書形式（新形式）の場合
+            if isinstance(data, dict) and "samples" in data:
+                return data["samples"]
+                
             return []
     except Exception:
         return []

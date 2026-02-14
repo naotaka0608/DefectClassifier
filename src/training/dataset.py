@@ -31,9 +31,19 @@ class DefectDataset(Dataset):
 
         # アノテーション読み込み
         with open(annotation_file, "r", encoding="utf-8") as f:
-            self.annotations = json.load(f)
+            data = json.load(f)
 
-        self.samples = self.annotations["samples"]
+        # データ形式の互換性対応
+        if isinstance(data, list):
+            self.samples = data
+        else:
+            self.samples = data.get("samples", [])
+            
+        # image_pathの補完
+        for sample in self.samples:
+            if "image_path" not in sample and "file_name" in sample:
+                # デフォルトのパス構造を仮定
+                sample["image_path"] = f"processed/train/images/{sample['file_name']}"
 
     def __len__(self) -> int:
         return len(self.samples)
