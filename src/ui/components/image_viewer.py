@@ -1,15 +1,16 @@
+"""画像表示コンポーネント"""
+from pathlib import Path
 import streamlit as st
 from PIL import Image
-from pathlib import Path
 
-def image_viewer(image_path: Path | str, caption: str = "", use_container_width: bool = True):
+def image_viewer(image_path: Path | str, caption: str = "", stretch: bool = True):
     """
     画像を表示するコンポーネント（エラーハンドリング付き）
     
     Args:
         image_path (Path | str): 画像ファイルのパス
         caption (str): 画像のキャプション
-        use_container_width (bool): コンテナ幅いっぱいに表示するかどうか（Trueの場合 width="stretch" を使用）
+        stretch (bool): コンテナ幅いっぱいに表示するかどうか
     """
     path_obj = Path(image_path)
     
@@ -19,8 +20,7 @@ def image_viewer(image_path: Path | str, caption: str = "", use_container_width:
 
     try:
         image = Image.open(path_obj)
-        # use_container_width is deprecated, use width="stretch"
-        width = "stretch" if use_container_width else None
+        width = "stretch" if stretch else "content"
         st.image(image, caption=caption, width=width)
     except Exception as e:
         st.error(f"画像の読み込みに失敗しました: {e}")
