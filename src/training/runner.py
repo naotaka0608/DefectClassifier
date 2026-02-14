@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import Callable, Optional
 
 import torch
-from loguru import logger
+from src.core.logger import logger
 from torch.utils.data import DataLoader, random_split
 
 from src.core.category_manager import CategoryManager

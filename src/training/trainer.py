@@ -6,7 +6,7 @@ from typing import Callable, Optional
 
 import torch
 import torch.nn as nn
-from loguru import logger
+from src.core.logger import logger
 from torch.optim import AdamW
 from torch.optim.lr_scheduler import CosineAnnealingWarmRestarts
 from torch.utils.data import DataLoader

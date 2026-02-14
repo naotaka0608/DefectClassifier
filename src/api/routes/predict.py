@@ -11,7 +11,7 @@ from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException
 from PIL import Image
-from loguru import logger
+from src.core.logger import logger
 
 from src.api.schemas.request import BatchPredictRequest, PredictRequest
 from src.api.schemas.response import (

@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import Optional
 
 import yaml
-from loguru import logger
+from src.core.logger import logger
 
 
 @dataclass
