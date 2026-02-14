@@ -103,3 +103,33 @@ def save_config(config: AppConfig, config_path: Path | str) -> None:
 from src.core.constants import CONFIG_DIR as DEFAULT_CONFIG_DIR  # noqa: F401
 from src.core.constants import MODEL_CONFIG_PATH as DEFAULT_MODEL_CONFIG  # noqa: F401
 from src.core.constants import CATEGORIES_CONFIG_PATH as DEFAULT_CATEGORIES_CONFIG  # noqa: F401
+
+
+def update_config_section(
+    section_name: str, updates: dict, config_path: Path | str = DEFAULT_MODEL_CONFIG
+) -> None:
+    """設定の特定セクションを更新して保存"""
+    from src.core.logger import logger
+
+    try:
+        config = load_config(config_path)
+    except Exception as e:
+        logger.warning(f"Config load failed, creating new: {e}")
+        config = AppConfig()
+
+    # セクション取得
+    if not hasattr(config, section_name):
+        raise ValueError(f"Invalid section name: {section_name}")
+
+    section = getattr(config, section_name)
+
+    # 更新 (Pydantic model update)
+    # pydantic v2 calls it model_copy or similar, but here we can just set attributes
+    for key, value in updates.items():
+        if hasattr(section, key):
+            setattr(section, key, value)
+        else:
+            logger.warning(f"Invalid key '{key}' for section '{section_name}'")
+
+    save_config(config, config_path)
+    logger.info(f"Updated config section '{section_name}'")

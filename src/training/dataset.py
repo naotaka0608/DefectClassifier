@@ -15,6 +15,7 @@ from src.core.category_manager import CategoryManager
 from src.core.config import AugmentationConfig
 from src.core.constants import DATA_DIR, TRAIN_IMAGES_DIR
 from src.core.data_manager import DataManager
+from src.core.types import TaskType
 
 
 class DefectDataset(Dataset):
@@ -69,9 +70,9 @@ class DefectDataset(Dataset):
 
         # ラベルをインデックスに変換
         labels = {
-            "cause": self.category_manager.name_to_index("cause", sample["cause"]),
-            "shape": self.category_manager.name_to_index("shape", sample["shape"]),
-            "depth": self.category_manager.name_to_index("depth", sample["depth"]),
+            TaskType.CAUSE: self.category_manager.name_to_index(TaskType.CAUSE, sample["cause"]),
+            TaskType.SHAPE: self.category_manager.name_to_index(TaskType.SHAPE, sample["shape"]),
+            TaskType.DEPTH: self.category_manager.name_to_index(TaskType.DEPTH, sample["depth"]),
         }
 
         return {
@@ -80,9 +81,9 @@ class DefectDataset(Dataset):
             "metadata": {
                 "image_path": str(image_path),
                 "original_labels": {
-                    "cause": sample["cause"],
-                    "shape": sample["shape"],
-                    "depth": sample["depth"],
+                    TaskType.CAUSE: sample["cause"],
+                    TaskType.SHAPE: sample["shape"],
+                    TaskType.DEPTH: sample["depth"],
                 },
             },
         }
@@ -142,9 +143,9 @@ def collate_fn(batch: list[dict]) -> dict:
     """バッチデータをまとめる"""
     images = torch.stack([item["image"] for item in batch])
     labels = {
-        "cause": torch.stack([item["labels"]["cause"] for item in batch]),
-        "shape": torch.stack([item["labels"]["shape"] for item in batch]),
-        "depth": torch.stack([item["labels"]["depth"] for item in batch]),
+        TaskType.CAUSE: torch.stack([item["labels"][TaskType.CAUSE] for item in batch]),
+        TaskType.SHAPE: torch.stack([item["labels"][TaskType.SHAPE] for item in batch]),
+        TaskType.DEPTH: torch.stack([item["labels"][TaskType.DEPTH] for item in batch]),
     }
     metadata = [item["metadata"] for item in batch]
 

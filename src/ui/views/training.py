@@ -2,14 +2,13 @@
 
 import time
 from pathlib import Path
-import yaml
 
 import plotly.graph_objects as go
 import streamlit as st
 
-from src.core.config import DEFAULT_MODEL_CONFIG, AppConfig, load_config, save_config
+from src.core.config import DEFAULT_MODEL_CONFIG, AppConfig, load_config, save_config, update_config_section
 from src.core.constants import CHECKPOINTS_DIR, MODEL_CONFIG_PATH, PROCESSED_DIR
-
+from src.ui.components.charts import plot_training_history
 
 def show_training_page():
     """学習ページを表示"""
@@ -36,7 +35,8 @@ def _show_training_tab():
     col1, col2 = st.columns([1, 1])
 
     # 設定値の保持用辞書
-    current_settings = {}
+    model_settings = {}
+    training_settings = {}
 
     with col1:
         st.markdown("### ⚙️ 学習設定")
@@ -53,12 +53,12 @@ def _show_training_tab():
         st.markdown("#### 🎛️ ハイパーパラメータ")
 
         epochs = st.slider("エポック数", min_value=1, max_value=500, value=10, step=1)
-        current_settings["epochs"] = epochs
+        training_settings["epochs"] = epochs
 
         batch_size = st.select_slider(
             "バッチサイズ", options=[4, 8, 16, 32, 64, 128], value=32
         )
-        current_settings["batch_size"] = batch_size
+        training_settings["batch_size"] = batch_size
 
         learning_rate = st.select_slider(
             "学習率",
@@ -66,7 +66,7 @@ def _show_training_tab():
             value=1e-4,
             format_func=lambda x: f"{x:.0e}",
         )
-        current_settings["learning_rate"] = learning_rate
+        training_settings["learning_rate"] = learning_rate
 
         # モデル設定
         st.markdown("#### 🧠 モデル設定")
@@ -76,16 +76,16 @@ def _show_training_tab():
             options=["resnet50", "resnet101", "efficientnet_b4"],
             index=0,
         )
-        current_settings["backbone"] = backbone
+        model_settings["backbone"] = backbone
 
         pretrained = st.checkbox("事前学習済み重みを使用", value=True)
-        current_settings["pretrained"] = pretrained
+        model_settings["pretrained"] = pretrained
 
         # GPU設定
         st.markdown("#### 💻 計算リソース")
         use_gpu = st.checkbox("GPUを使用", value=True)
         mixed_precision = st.checkbox("混合精度学習", value=True)
-        current_settings["mixed_precision"] = mixed_precision
+        training_settings["mixed_precision"] = mixed_precision
 
     with col2:
         st.markdown("### 📊 学習モニター")
@@ -97,7 +97,8 @@ def _show_training_tab():
 
         if st.button("🚀 学習開始", type="primary", width="stretch"):
             # 設定を保存
-            _save_training_config(current_settings)
+            update_config_section("model", model_settings)
+            update_config_section("training", training_settings)
             
             # 履歴初期化
             st.session_state.training_history = {
@@ -132,7 +133,7 @@ def _show_training_tab():
                     
                     # グラフ更新
                     with chart_container.container():
-                        _plot_training_history(st.session_state.training_history)
+                        plot_training_history(st.session_state.training_history)
 
                 # 学習実行
                 with st.spinner("学習を実行中... (これには時間がかかります)"):
@@ -148,7 +149,7 @@ def _show_training_tab():
         # 学習完了後の表示（履歴がある場合）
         if "training_history" in st.session_state and st.session_state.training_history["train_loss"]:
              with chart_container.container():
-                _plot_training_history(st.session_state.training_history)
+                plot_training_history(st.session_state.training_history)
 
 
 def _show_augmentation_settings_tab():
@@ -219,107 +220,8 @@ def _show_augmentation_settings_tab():
 
     st.markdown("---")
     if st.button("💾 データ拡張設定を保存", width="stretch"):
-        _save_augmentation_config(current_settings)
+        update_config_section("augmentation", current_settings)
         st.success("データ拡張設定を保存しました！")
-
-
-def _save_augmentation_config(settings):
-    """データ拡張設定を保存"""
-    try:
-        config = load_config(MODEL_CONFIG_PATH)
-    except Exception:
-        config = AppConfig()
-
-    config.augmentation.resize = settings["resize"]
-    config.augmentation.crop_size = settings["crop_size"]
-    config.augmentation.horizontal_flip = settings["horizontal_flip"]
-    config.augmentation.vertical_flip = settings["vertical_flip"]
-    config.augmentation.random_rotate90 = settings["random_rotate90"]
-    config.augmentation.color_jitter = settings["color_jitter"]
-    config.augmentation.gaussian_noise = settings["gaussian_noise"]
-
-    save_config(config, MODEL_CONFIG_PATH)
-
-
-def _save_training_config(settings):
-    """学習設定を保存"""
-    try:
-        config = load_config(MODEL_CONFIG_PATH)
-    except Exception:
-        config = AppConfig()
-
-    # model
-    config.model.backbone = settings["backbone"]
-    config.model.pretrained = settings["pretrained"]
-
-    # training
-    config.training.epochs = settings["epochs"]
-    config.training.batch_size = settings["batch_size"]
-    config.training.learning_rate = settings["learning_rate"]
-    config.training.mixed_precision = settings["mixed_precision"]
-
-    save_config(config, MODEL_CONFIG_PATH)
-
-
-
-def _plot_training_history(history: dict):
-    """学習履歴をプロット"""
-    epochs = list(range(1, len(history["train_loss"]) + 1))
-    if not epochs:
-        return
-
-    # 損失グラフ
-    fig1 = go.Figure()
-    fig1.add_trace(
-        go.Scatter(
-            x=epochs,
-            y=history["train_loss"],
-            mode="lines+markers",
-            name="Train Loss",
-            line=dict(color="#667eea", width=2),
-        )
-    )
-    fig1.add_trace(
-        go.Scatter(
-            x=epochs,
-            y=history["val_loss"],
-            mode="lines+markers",
-            name="Val Loss",
-            line=dict(color="#f093fb", width=2),
-        )
-    )
-    fig1.update_layout(
-        title="損失の推移",
-        xaxis_title="Epoch",
-        yaxis_title="Loss",
-        height=250,
-        margin=dict(l=40, r=40, t=60, b=40),
-        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
-    )
-    st.plotly_chart(fig1, width="stretch", key=f"loss_chart_{len(epochs)}")
-
-    # 精度グラフ
-    fig2 = go.Figure()
-    fig2.add_trace(
-        go.Scatter(
-            x=epochs,
-            y=[a * 100 for a in history["accuracy"]],
-            mode="lines+markers",
-            name="Accuracy",
-            line=dict(color="#764ba2", width=2),
-            fill="tozeroy",
-            fillcolor="rgba(118, 75, 162, 0.1)",
-        )
-    )
-    fig2.update_layout(
-        title="精度の推移",
-        xaxis_title="Epoch",
-        yaxis_title="Accuracy (%)",
-        yaxis_range=[0, 100],
-        height=250,
-        margin=dict(l=40, r=40, t=60, b=40),
-    )
-    st.plotly_chart(fig2, width="stretch", key=f"acc_chart_{len(epochs)}")
 
 
 def _show_history_tab():

@@ -18,7 +18,9 @@ from src.core.category_manager import CategoryManager
 from src.core.config import DEFAULT_CATEGORIES_CONFIG
 from src.core.constants import ANNOTATIONS_FILE, CHECKPOINTS_DIR, DATA_DIR
 from src.core.data_manager import DataManager
+from src.core.types import TaskType
 from src.inference.predictor import DefectPredictor
+from src.training.runner import train_model  # for type hint if needed, or remove
 
 
 def show_evaluation_page():
@@ -96,8 +98,9 @@ def _run_evaluation(category_manager: CategoryManager) -> dict[str, Any]:
     predictor = DefectPredictor(model_path=model_path, category_manager=category_manager)
     
     # 推論実行
+    # 推論実行
     images = []
-    true_labels = {"cause": [], "shape": [], "depth": []}
+    true_labels = {TaskType.CAUSE: [], TaskType.SHAPE: [], TaskType.DEPTH: []}
     
     for sample in val_samples:
         # 画像パス解決
@@ -119,9 +122,9 @@ def _run_evaluation(category_manager: CategoryManager) -> dict[str, Any]:
             from PIL import Image
             img = np.array(Image.open(img_path).convert("RGB"))
             images.append(img)
-            true_labels["cause"].append(sample["cause"])
-            true_labels["shape"].append(sample["shape"])
-            true_labels["depth"].append(sample["depth"])
+            true_labels[TaskType.CAUSE].append(sample["cause"])
+            true_labels[TaskType.SHAPE].append(sample["shape"])
+            true_labels[TaskType.DEPTH].append(sample["depth"])
         except Exception:
             continue
 
@@ -138,9 +141,9 @@ def _run_evaluation(category_manager: CategoryManager) -> dict[str, Any]:
         predictions.extend(batch_preds)
 
     pred_labels = {
-        "cause": [p.cause.label for p in predictions],
-        "shape": [p.shape.label for p in predictions],
-        "depth": [p.depth.label for p in predictions],
+        TaskType.CAUSE: [p.cause.label for p in predictions],
+        TaskType.SHAPE: [p.shape.label for p in predictions],
+        TaskType.DEPTH: [p.depth.label for p in predictions],
     }
     
     return {
@@ -159,7 +162,7 @@ def _show_summary_tab(results: dict, category_manager: CategoryManager):
     
     # 各タスクの精度計算
     accuracies = {}
-    for task in ["cause", "shape", "depth"]:
+    for task in [TaskType.CAUSE, TaskType.SHAPE, TaskType.DEPTH]:
         acc = accuracy_score(true_labels[task], pred_labels[task])
         accuracies[task] = acc
 
@@ -167,9 +170,9 @@ def _show_summary_tab(results: dict, category_manager: CategoryManager):
     all_correct = 0
     total = results["total_samples"]
     for i in range(total):
-        if (true_labels["cause"][i] == pred_labels["cause"][i] and
-            true_labels["shape"][i] == pred_labels["shape"][i] and
-            true_labels["depth"][i] == pred_labels["depth"][i]):
+        if (true_labels[TaskType.CAUSE][i] == pred_labels[TaskType.CAUSE][i] and
+            true_labels[TaskType.SHAPE][i] == pred_labels[TaskType.SHAPE][i] and
+            true_labels[TaskType.DEPTH][i] == pred_labels[TaskType.DEPTH][i]):
             all_correct += 1
     overall_acc = all_correct / total if total > 0 else 0
 
@@ -177,9 +180,9 @@ def _show_summary_tab(results: dict, category_manager: CategoryManager):
     cols = st.columns(4)
     metrics = [
         ("全体完全一致", f"{overall_acc:.1%}", "#667eea"),
-        ("原因分類", f"{accuracies['cause']:.1%}", "#764ba2"),
-        ("形状分類", f"{accuracies['shape']:.1%}", "#f093fb"),
-        ("深さ分類", f"{accuracies['depth']:.1%}", "#5ee7df"),
+        ("原因分類", f"{accuracies[TaskType.CAUSE]:.1%}", "#764ba2"),
+        ("形状分類", f"{accuracies[TaskType.SHAPE]:.1%}", "#f093fb"),
+        ("深さ分類", f"{accuracies[TaskType.DEPTH]:.1%}", "#5ee7df"),
     ]
 
     for col, (name, value, color) in zip(cols, metrics):
@@ -205,7 +208,7 @@ def _show_summary_tab(results: dict, category_manager: CategoryManager):
 
     # クラス別精度 (F1 Score)
     st.markdown("### 🎯 クラス別 F1スコア")
-    task_names = {"cause": "原因", "shape": "形状", "depth": "深さ"}
+    task_names = {TaskType.CAUSE: "原因", TaskType.SHAPE: "形状", TaskType.DEPTH: "深さ"}
 
     for task, name in task_names.items():
         labels = category_manager.get_categories(task)
@@ -247,7 +250,7 @@ def _show_confusion_matrix_tab(results: dict, category_manager: CategoryManager)
     """混同行列タブ"""
     st.markdown("### 🎯 混同行列")
 
-    task_names = {"cause": "原因", "shape": "形状", "depth": "深さ"}
+    task_names = {TaskType.CAUSE: "原因", TaskType.SHAPE: "形状", TaskType.DEPTH: "深さ"}
     selected_task = st.selectbox(
         "分類タスクを選択",
         options=list(task_names.keys()),
@@ -302,7 +305,7 @@ def _show_detailed_analysis_tab(results: dict, category_manager: CategoryManager
     """詳細分析タブ"""
     st.markdown("### 📋 詳細分析")
 
-    task_names = {"cause": "原因", "shape": "形状", "depth": "深さ"}
+    task_names = {TaskType.CAUSE: "原因", TaskType.SHAPE: "形状", TaskType.DEPTH: "深さ"}
     
     report_data = []
 

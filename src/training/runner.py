@@ -15,6 +15,7 @@ from src.core.data_manager import DataManager
 from src.models.defect_classifier import DefectClassifier
 from src.training.dataset import DefectDataset, collate_fn
 from src.training.trainer import Trainer
+from src.core.types import TaskType
 
 def train_model(
     config_path: Path | str = MODEL_CONFIG_PATH,
@@ -93,12 +94,17 @@ def train_model(
 
         # モデル初期化
         model_config = app_config.model
+        
+        task_config = {
+            TaskType.CAUSE: len(category_manager.get_categories(TaskType.CAUSE)),
+            TaskType.SHAPE: len(category_manager.get_categories(TaskType.SHAPE)),
+            TaskType.DEPTH: len(category_manager.get_categories(TaskType.DEPTH)),
+        }
+        
         model = DefectClassifier(
+            task_config=task_config,
             backbone_name=model_config.backbone,
             pretrained=model_config.pretrained,
-            num_cause_classes=len(category_manager.get_categories("cause")),
-            num_shape_classes=len(category_manager.get_categories("shape")),
-            num_depth_classes=len(category_manager.get_categories("depth")),
             dropout=model_config.dropout,
             shared_features=model_config.shared_features,
             head_hidden_features=model_config.head_hidden_features,

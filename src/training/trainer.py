@@ -12,6 +12,7 @@ from torch.utils.data import DataLoader
 from tqdm import tqdm
 
 from src.core.config import TrainingConfig
+from src.core.types import TaskType
 from src.models.defect_classifier import DefectClassifier
 from src.models.losses import MultiTaskLoss
 
@@ -69,9 +70,9 @@ class Trainer:
         )
 
         self.criterion = MultiTaskLoss(
-            cause_weight=config.loss_weights["cause"],
-            shape_weight=config.loss_weights["shape"],
-            depth_weight=config.loss_weights["depth"],
+            cause_weight=config.loss_weights[TaskType.CAUSE],
+            shape_weight=config.loss_weights[TaskType.SHAPE],
+            depth_weight=config.loss_weights[TaskType.DEPTH],
             label_smoothing=config.label_smoothing,
         )
 
@@ -82,7 +83,14 @@ class Trainer:
         self.early_stopping = EarlyStopping(
             patience=config.patience, min_delta=config.min_delta
         )
-        self.metrics = MultiTaskMetrics()
+        
+        # クラス数をモデルから取得してメトリクスに渡す
+        num_classes = {
+            TaskType.CAUSE: model.num_cause_classes,
+            TaskType.SHAPE: model.num_shape_classes,
+            TaskType.DEPTH: model.num_depth_classes,
+        }
+        self.metrics = MultiTaskMetrics(num_classes=num_classes)
 
         self.best_val_loss = float("inf")
         self.current_epoch = 0

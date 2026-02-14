@@ -6,23 +6,30 @@ import torch
 import torch.nn.functional as F
 
 
+from src.core.types import TaskType
+
 class MultiTaskMetrics:
     """マルチタスク分類の評価メトリクス"""
 
-    def __init__(self):
+    def __init__(self, num_classes: Optional[dict[str, int]] = None):
+        self.num_classes = num_classes or {
+            TaskType.CAUSE: 6,
+            TaskType.SHAPE: 3,
+            TaskType.DEPTH: 3,
+        }
         self.reset()
 
     def reset(self) -> None:
         """メトリクスをリセット"""
         self._predictions: dict[str, list[torch.Tensor]] = {
-            "cause": [],
-            "shape": [],
-            "depth": [],
+            TaskType.CAUSE: [],
+            TaskType.SHAPE: [],
+            TaskType.DEPTH: [],
         }
         self._targets: dict[str, list[torch.Tensor]] = {
-            "cause": [],
-            "shape": [],
-            "depth": [],
+            TaskType.CAUSE: [],
+            TaskType.SHAPE: [],
+            TaskType.DEPTH: [],
         }
 
     def update(
@@ -31,7 +38,7 @@ class MultiTaskMetrics:
         targets: dict[str, torch.Tensor],
     ) -> None:
         """予測と正解を追加"""
-        for task_name in ["cause", "shape", "depth"]:
+        for task_name in [TaskType.CAUSE, TaskType.SHAPE, TaskType.DEPTH]:
             pred = predictions[task_name].argmax(dim=1).cpu()
             target = targets[task_name].cpu()
             self._predictions[task_name].append(pred)
@@ -41,16 +48,26 @@ class MultiTaskMetrics:
         """メトリクスを計算"""
         metrics = {}
 
-        for task_name in ["cause", "shape", "depth"]:
+        for task_name in [TaskType.CAUSE, TaskType.SHAPE, TaskType.DEPTH]:
             preds = torch.cat(self._predictions[task_name])
             targets = torch.cat(self._targets[task_name])
 
+            # Accuracy
             accuracy = (preds == targets).float().mean().item()
             metrics[f"{task_name}_accuracy"] = accuracy
+            
+            # P/R/F1
+            num_cls = self.num_classes.get(task_name)
+            if num_cls:
+                stats = compute_precision_recall_f1(preds, targets, num_cls)
+                # 平均値を記録 (macro average)
+                metrics[f"{task_name}_precision"] = stats["precision"].mean().item()
+                metrics[f"{task_name}_recall"] = stats["recall"].mean().item()
+                metrics[f"{task_name}_f1"] = stats["f1"].mean().item()
 
         # 平均精度
         metrics["mean_accuracy"] = sum(
-            metrics[f"{t}_accuracy"] for t in ["cause", "shape", "depth"]
+            metrics[f"{t}_accuracy"] for t in [TaskType.CAUSE, TaskType.SHAPE, TaskType.DEPTH]
         ) / 3
 
         return metrics

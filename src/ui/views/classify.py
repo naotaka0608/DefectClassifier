@@ -9,6 +9,7 @@ from PIL import Image
 
 from src.core.category_manager import CategoryManager
 from src.core.config import DEFAULT_CATEGORIES_CONFIG
+from src.core.types import TaskType
 from src.ui.components.image_viewer import image_viewer
 
 
@@ -64,13 +65,13 @@ def _run_classification(image: Image.Image, category_manager: CategoryManager):
         import random
 
         result = {
-            "cause": random.choice(category_manager.get_categories("cause")),
-            "shape": random.choice(category_manager.get_categories("shape")),
-            "depth": random.choice(category_manager.get_categories("depth")),
+            TaskType.CAUSE: random.choice(category_manager.get_categories("cause")),
+            TaskType.SHAPE: random.choice(category_manager.get_categories("shape")),
+            TaskType.DEPTH: random.choice(category_manager.get_categories("depth")),
         }
 
         probs = {}
-        for task in ["cause", "shape", "depth"]:
+        for task in [TaskType.CAUSE, TaskType.SHAPE, TaskType.DEPTH]:
             categories = category_manager.get_categories(task)
             raw_probs = np.random.dirichlet(np.ones(len(categories)))
             probs[task] = {cat: float(p) for cat, p in zip(categories, raw_probs)}
@@ -90,9 +91,9 @@ def _display_results(result: dict, probs: dict, category_manager: CategoryManage
     # メトリクスカード
     cols = st.columns(3)
 
-    task_names = {"cause": "原因", "shape": "形状", "depth": "深さ"}
-    task_icons = {"cause": "⚡", "shape": "📐", "depth": "📏"}
-    task_colors = {"cause": "#667eea", "shape": "#764ba2", "depth": "#f093fb"}
+    task_names = {TaskType.CAUSE: "原因", TaskType.SHAPE: "形状", TaskType.DEPTH: "深さ"}
+    task_icons = {TaskType.CAUSE: "⚡", TaskType.SHAPE: "📐", TaskType.DEPTH: "📏"}
+    task_colors = {TaskType.CAUSE: "#667eea", TaskType.SHAPE: "#764ba2", TaskType.DEPTH: "#f093fb"}
 
     for i, (task, name) in enumerate(task_names.items()):
         with cols[i]:

@@ -26,17 +26,17 @@ class TaskHead(nn.Module):
         return self.head(x)
 
 
+from src.core.types import TaskType
+
 class MultiTaskHead(nn.Module):
     """マルチタスク分類ヘッド"""
 
     def __init__(
         self,
         in_features: int,
+        task_config: dict[str, int],
         shared_features: int = 512,
         head_hidden_features: int = 256,
-        num_cause_classes: int = 6,
-        num_shape_classes: int = 3,
-        num_depth_classes: int = 3,
         dropout: float = 0.3,
     ):
         super().__init__()
@@ -49,21 +49,16 @@ class MultiTaskHead(nn.Module):
         )
 
         # タスク別ヘッド
-        self.cause_head = TaskHead(
-            shared_features, head_hidden_features, num_cause_classes, dropout
-        )
-        self.shape_head = TaskHead(
-            shared_features, head_hidden_features, num_shape_classes, dropout
-        )
-        self.depth_head = TaskHead(
-            shared_features, head_hidden_features, num_depth_classes, dropout
-        )
+        self.heads = nn.ModuleDict()
+        for task_name, num_classes in task_config.items():
+            self.heads[task_name] = TaskHead(
+                shared_features, head_hidden_features, num_classes, dropout
+            )
 
     def forward(self, x: torch.Tensor) -> dict[str, torch.Tensor]:
         shared = self.shared_layer(x)
-
+        
         return {
-            "cause": self.cause_head(shared),
-            "shape": self.shape_head(shared),
-            "depth": self.depth_head(shared),
+            task_name: head(shared)
+            for task_name, head in self.heads.items()
         }

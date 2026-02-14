@@ -12,6 +12,7 @@ from src.core.category_manager import CategoryManager
 from src.core.config import DEFAULT_CATEGORIES_CONFIG
 from src.core.constants import INBOX_DIR, TRAIN_IMAGES_DIR
 from src.core.data_manager import DataManager
+from src.core.types import TaskType
 from src.ui.components.image_viewer import image_viewer
 from src.ui.components.info_card import info_card
 
@@ -93,20 +94,20 @@ def _show_detail_view(json_path: Path, category_manager: CategoryManager):
         with st.form(key=f"label_form_{json_path.stem}"):
             new_cause = st.selectbox(
                 "原因 (Cause)",
-                category_manager.get_categories("cause"),
-                index=_get_index(category_manager.get_categories("cause"), current_cause)
+                category_manager.get_categories(TaskType.CAUSE),
+                index=_get_index(category_manager.get_categories(TaskType.CAUSE), current_cause)
             )
             
             new_shape = st.selectbox(
                 "形状 (Shape)",
-                category_manager.get_categories("shape"),
-                index=_get_index(category_manager.get_categories("shape"), current_shape)
+                category_manager.get_categories(TaskType.SHAPE),
+                index=_get_index(category_manager.get_categories(TaskType.SHAPE), current_shape)
             )
             
             new_depth = st.selectbox(
                 "深さ (Depth)",
-                category_manager.get_categories("depth"),
-                index=_get_index(category_manager.get_categories("depth"), current_depth)
+                category_manager.get_categories(TaskType.DEPTH),
+                index=_get_index(category_manager.get_categories(TaskType.DEPTH), current_depth)
             )
             
             submitted = st.form_submit_button("✅ データセットに追加")

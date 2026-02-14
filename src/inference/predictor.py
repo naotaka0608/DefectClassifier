@@ -15,6 +15,7 @@ from PIL import Image
 
 from src.core.category_manager import CategoryManager
 from src.core.logger import logger
+from src.core.types import TaskType
 from src.models.defect_classifier import DefectClassifier
 
 
@@ -113,9 +114,9 @@ class DefectPredictor:
             )
 
         return PredictionResult(
-            cause=results["cause"],
-            shape=results["shape"],
-            depth=results["depth"],
+            cause=results[TaskType.CAUSE],
+            shape=results[TaskType.SHAPE],
+            depth=results[TaskType.DEPTH],
         )
 
     @torch.no_grad()

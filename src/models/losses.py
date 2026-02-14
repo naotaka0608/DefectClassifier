@@ -7,6 +7,8 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 
+from src.core.types import TaskType
+
 class MultiTaskLoss(nn.Module):
     """マルチタスク学習用の重み付き損失関数"""
 
@@ -20,9 +22,9 @@ class MultiTaskLoss(nn.Module):
     ):
         super().__init__()
         self.task_weights = {
-            "cause": cause_weight,
-            "shape": shape_weight,
-            "depth": depth_weight,
+            TaskType.CAUSE: cause_weight,
+            TaskType.SHAPE: shape_weight,
+            TaskType.DEPTH: depth_weight,
         }
         self.label_smoothing = label_smoothing
         self.class_weights = class_weights or {}
@@ -41,7 +43,7 @@ class MultiTaskLoss(nn.Module):
         losses = {}
         total_loss = torch.tensor(0.0, device=next(iter(predictions.values())).device)
 
-        for task_name in ["cause", "shape", "depth"]:
+        for task_name in [TaskType.CAUSE, TaskType.SHAPE, TaskType.DEPTH]:
             pred = predictions[task_name]
             target = targets[task_name]
 
