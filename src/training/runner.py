@@ -10,7 +10,7 @@ from torch.utils.data import DataLoader
 
 from src.core.category_manager import CategoryManager
 from src.core.config import DEFAULT_CATEGORIES_CONFIG, load_config
-from src.core.constants import ANNOTATIONS_FILE, CHECKPOINTS_DIR, DATA_DIR, MODEL_CONFIG_PATH
+from src.core.constants import ANNOTATIONS_FILE, CHECKPOINTS_DIR, DATA_DIR, MODEL_CONFIG_PATH, TRAIN_DIR
 from src.core.data_manager import DataManager
 from src.models.defect_classifier import DefectClassifier
 from src.training.dataset import DefectDataset, collate_fn
@@ -49,14 +49,14 @@ def train_model(
 
         # Train: Augmentation あり / Val: Augmentation なし
         train_dataset = DefectDataset(
-            data_dir=DATA_DIR,
+            data_dir=TRAIN_DIR,
             category_manager=category_manager,
             samples=train_samples,
             is_training=True,
             aug_config=aug_config,
         )
         val_dataset = DefectDataset(
-            data_dir=DATA_DIR,
+            data_dir=TRAIN_DIR,
             category_manager=category_manager,
             samples=val_samples,
             is_training=False,

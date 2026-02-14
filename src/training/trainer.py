@@ -85,11 +85,8 @@ class Trainer:
         )
         
         # クラス数をモデルから取得してメトリクスに渡す
-        num_classes = {
-            TaskType.CAUSE: model.num_cause_classes,
-            TaskType.SHAPE: model.num_shape_classes,
-            TaskType.DEPTH: model.num_depth_classes,
-        }
+        # model.task_config は {task_name: num_classes(int)} の辞書
+        num_classes = model.task_config.copy()
         self.metrics = MultiTaskMetrics(num_classes=num_classes)
 
         self.best_val_loss = float("inf")
