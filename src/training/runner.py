@@ -43,16 +43,9 @@ def train_model(
             raise ValueError("データセットが空です。画像をアップロードしてください。")
 
         # インデックスベースで Train/Val 分割 (8:2)
-        indices = list(range(len(all_samples)))
-        rng = random.Random(42)
-        rng.shuffle(indices)
-
-        train_size = int(len(all_samples) * 0.8)
-        train_indices = indices[:train_size]
-        val_indices = indices[train_size:]
-
-        train_samples = [all_samples[i] for i in train_indices]
-        val_samples = [all_samples[i] for i in val_indices]
+        # 共通の分割ロジックを使用
+        from src.core.data_utils import split_dataset
+        train_samples, val_samples = split_dataset(all_samples, train_ratio=0.8, seed=42)
 
         # Train: Augmentation あり / Val: Augmentation なし
         train_dataset = DefectDataset(

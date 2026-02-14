@@ -3,7 +3,8 @@
 import sys
 from pathlib import Path
 
-# Streamlit はスクリプトとして直接実行されるため、プロジェクトルートをパスに追加
+# Streamlit creates a new process, but running via `uv run` or `python -m streamlit` sets up the path correctly.
+# However, to ensure `src` is importable when running `streamlit run src/ui/app.py`, we explicitly add the root.
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 import streamlit as st

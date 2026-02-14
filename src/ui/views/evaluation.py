@@ -16,7 +16,7 @@ from sklearn.metrics import (
 
 from src.core.category_manager import CategoryManager
 from src.core.config import DEFAULT_CATEGORIES_CONFIG
-from src.core.constants import ANNOTATIONS_FILE, CHECKPOINTS_DIR, DATA_DIR
+from src.core.constants import ANNOTATIONS_FILE, CHECKPOINTS_DIR, DATA_DIR, BEST_MODEL_PATH, FINAL_MODEL_PATH
 from src.core.data_manager import DataManager
 from src.core.types import TaskType
 from src.inference.predictor import DefectPredictor
@@ -77,21 +77,16 @@ def _run_evaluation(category_manager: CategoryManager) -> dict[str, Any]:
     if len(all_samples) == 0:
         raise ValueError("データがありません。")
 
-    indices = list(range(len(all_samples)))
-    rng = random.Random(42)
-    rng.shuffle(indices)
-
-    train_size = int(len(all_samples) * 0.8)
-    val_indices = indices[train_size:]
-    val_samples = [all_samples[i] for i in val_indices]
+    from src.core.data_utils import split_dataset
+    _, val_samples = split_dataset(all_samples, train_ratio=0.8, seed=42)
 
     if not val_samples:
          raise ValueError("検証用データが不足しています。")
 
     # モデル読み込み
-    model_path = CHECKPOINTS_DIR / "best_model.pth"
+    model_path = BEST_MODEL_PATH
     if not model_path.exists():
-         model_path = CHECKPOINTS_DIR / "final_model.pth"
+         model_path = FINAL_MODEL_PATH
          if not model_path.exists():
              raise FileNotFoundError("学習済みモデルが見つかりません。")
 

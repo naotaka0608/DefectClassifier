@@ -13,7 +13,7 @@ from src.api.routes import categories, health, predict
 
 import yaml
 from src.core.category_manager import CategoryManager
-from src.core.constants import CHECKPOINTS_DIR, CONFIG_DIR
+from src.core.constants import CHECKPOINTS_DIR, CONFIG_DIR, BEST_MODEL_PATH, FINAL_MODEL_PATH
 from src.inference.predictor import DefectPredictor
 
 @asynccontextmanager
@@ -37,10 +37,10 @@ async def lifespan(app: FastAPI):
             
         # モデル初期化
         logger.info("Loading model...")
-        model_path = CHECKPOINTS_DIR / "best_model.pth"
+        model_path = BEST_MODEL_PATH
         if not model_path.exists():
             logger.warning(f"Default model not found at {model_path}. Trying final_model.pth")
-            model_path = CHECKPOINTS_DIR / "final_model.pth"
+            model_path = FINAL_MODEL_PATH
             
         if model_path.exists():
             predictor = DefectPredictor(
