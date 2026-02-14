@@ -225,13 +225,11 @@ def _show_augmentation_settings_tab():
 
 def _save_augmentation_config(settings):
     """データ拡張設定を保存"""
-    # 既存設定読み込み
     try:
         config = load_config(MODEL_CONFIG_PATH)
     except Exception:
         config = AppConfig()
 
-    # Configオブジェクト更新
     config.augmentation.resize = settings["resize"]
     config.augmentation.crop_size = settings["crop_size"]
     config.augmentation.horizontal_flip = settings["horizontal_flip"]
@@ -240,29 +238,28 @@ def _save_augmentation_config(settings):
     config.augmentation.color_jitter = settings["color_jitter"]
     config.augmentation.gaussian_noise = settings["gaussian_noise"]
 
-    # 保存
     save_config(config, MODEL_CONFIG_PATH)
+
+
+def _save_training_config(settings):
     """学習設定を保存"""
-    # 既存設定を読み込み（なければデフォルト）
-    AppConfig()
     try:
         config = load_config(MODEL_CONFIG_PATH)
     except Exception:
         config = AppConfig()
 
-    # パラメータ更新
     # model
     config.model.backbone = settings["backbone"]
     config.model.pretrained = settings["pretrained"]
-    
+
     # training
     config.training.epochs = settings["epochs"]
     config.training.batch_size = settings["batch_size"]
     config.training.learning_rate = settings["learning_rate"]
     config.training.mixed_precision = settings["mixed_precision"]
-    
-    # 保存
+
     save_config(config, MODEL_CONFIG_PATH)
+
 
 
 def _plot_training_history(history: dict):

@@ -1,6 +1,5 @@
 """学習トレーナー"""
 
-from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Callable, Optional
 
@@ -12,30 +11,11 @@ from torch.optim.lr_scheduler import CosineAnnealingWarmRestarts
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 
+from src.core.config import TrainingConfig
 from src.models.defect_classifier import DefectClassifier
 from src.models.losses import MultiTaskLoss
 
 from .metrics import MultiTaskMetrics
-
-
-@dataclass
-class TrainingConfig:
-    """学習設定"""
-
-    epochs: int = 100
-    batch_size: int = 32
-    learning_rate: float = 1e-4
-    weight_decay: float = 1e-4
-    warmup_epochs: int = 5
-    patience: int = 10
-    min_delta: float = 0.001
-    gradient_clip: float = 1.0
-    mixed_precision: bool = True
-    num_workers: int = 4
-    loss_weights: dict[str, float] = field(
-        default_factory=lambda: {"cause": 1.0, "shape": 1.0, "depth": 1.0}
-    )
-    label_smoothing: float = 0.1
 
 
 class EarlyStopping:

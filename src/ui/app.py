@@ -9,6 +9,9 @@ sys.path.insert(0, str(project_root))
 
 import streamlit as st
 
+from src.core.category_manager import CategoryManager
+from src.core.constants import CATEGORIES_CONFIG_PATH
+
 # ページ設定
 st.set_page_config(
     page_title="傷分類システム",
@@ -17,104 +20,17 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
-# カスタムCSS
-st.markdown(
-    """
-    <style>
-    /* メインコンテナ */
-    .main {
-        padding: 1rem 2rem;
-    }
+# カスタムCSS（外部ファイルから読み込み）
+_css_path = Path(__file__).parent / "styles" / "main.css"
+if _css_path.exists():
+    st.markdown(f"<style>{_css_path.read_text(encoding='utf-8')}</style>", unsafe_allow_html=True)
 
-    /* サイドバー */
-    .css-1d391kg {
-        padding-top: 2rem;
-    }
 
-    /* メトリクスカード */
-    .metric-card {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        padding: 1.5rem;
-        border-radius: 1rem;
-        color: white;
-        text-align: center;
-        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-    }
-
-    .metric-value {
-        font-size: 2.5rem;
-        font-weight: bold;
-        margin-bottom: 0.5rem;
-    }
-
-    .metric-label {
-        font-size: 0.9rem;
-        opacity: 0.9;
-    }
-
-    /* 結果カード */
-    .result-card {
-        background: white;
-        padding: 1.5rem;
-        border-radius: 1rem;
-        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-        border-left: 4px solid #667eea;
-        margin-bottom: 1rem;
-    }
-
-    /* ボタンスタイル */
-    .stButton > button {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        color: white;
-        border: none;
-        padding: 0.75rem 2rem;
-        border-radius: 0.5rem;
-        font-weight: 600;
-        transition: transform 0.2s;
-    }
-
-    .stButton > button:hover {
-        transform: translateY(-2px);
-    }
-
-    /* タブスタイル */
-    .stTabs [data-baseweb="tab-list"] {
-        gap: 1rem;
-    }
-
-    .stTabs [data-baseweb="tab"] {
-        padding: 0.75rem 1.5rem;
-        border-radius: 0.5rem;
-    }
-
-    /* 進捗バー */
-    .stProgress > div > div {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    }
-
-    /* ヘッダー */
-    .app-header {
-        background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
-        padding: 2rem;
-        border-radius: 1rem;
-        margin-bottom: 2rem;
-        color: white;
-    }
-
-    .app-title {
-        font-size: 2.5rem;
-        font-weight: bold;
-        margin-bottom: 0.5rem;
-    }
-
-    .app-subtitle {
-        font-size: 1.1rem;
-        opacity: 0.8;
-    }
-    </style>
-    """,
-    unsafe_allow_html=True,
-)
+def _get_category_manager() -> CategoryManager:
+    """CategoryManagerをセッションから取得（未初期化なら初期化）"""
+    if "category_manager" not in st.session_state:
+        st.session_state.category_manager = CategoryManager(CATEGORIES_CONFIG_PATH)
+    return st.session_state.category_manager
 
 
 def main():
@@ -130,6 +46,9 @@ def main():
         unsafe_allow_html=True,
     )
 
+    # CategoryManager を事前初期化
+    _get_category_manager()
+
     # サイドバー
     with st.sidebar:
         st.markdown("### 📋 メニュー")
@@ -142,14 +61,15 @@ def main():
         st.markdown("---")
         st.markdown("### 📌 システム情報")
         st.info("Version: 1.2.0")
+
     # ページルーティング
     if page == "📥 受信トレイ":
         from src.ui.views.inbox import show_inbox_page
-        
+
         show_inbox_page()
     elif page == "📂 データセット":
         from src.ui.views.dataset import show_dataset_page
-        
+
         show_dataset_page()
     elif page == "📚 学習":
         from src.ui.views.training import show_training_page

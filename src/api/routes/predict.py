@@ -9,6 +9,8 @@ from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
+import numpy as np
+
 from fastapi import APIRouter, Depends, HTTPException
 from PIL import Image
 from src.core.logger import logger
@@ -56,6 +58,25 @@ def set_config(config: dict):
     _config = config
 
 
+def _resolve_model(model_name: str, predictor: DefectPredictor) -> None:
+    """モデル名を解決してリロード"""
+    model_path = CHECKPOINTS_DIR / model_name
+    if not model_path.exists():
+        model_path_with_ext = CHECKPOINTS_DIR / f"{model_name}.pth"
+        if model_path_with_ext.exists():
+            model_path = model_path_with_ext
+        else:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Model '{model_name}' not found in checkpoints"
+            )
+
+    try:
+        predictor.reload_model(model_path)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to load model: {str(e)}")
+
+
 def _save_inference_log(image: Image.Image, result: PredictResponse):
     """推論ログ（画像と結果）を保存"""
     if _config is None or not _config.get("api", {}).get("save_received_images", False):
@@ -100,24 +121,8 @@ async def predict_single(
     predictor: DefectPredictor = Depends(get_predictor),
 ) -> PredictResponse:
     """単一画像の傷分類を実行"""
-    # モデル切り替え処理
     if request.model_name:
-        model_path = CHECKPOINTS_DIR / request.model_name
-        if not model_path.exists():
-            # 拡張子がない場合は.pthを付与して再試行
-            model_path_with_ext = CHECKPOINTS_DIR / f"{request.model_name}.pth"
-            if model_path_with_ext.exists():
-                model_path = model_path_with_ext
-            else:
-                 raise HTTPException(
-                    status_code=400, 
-                    detail=f"Model '{request.model_name}' not found in checkpoints"
-                )
-        
-        try:
-            predictor.reload_model(model_path)
-        except Exception as e:
-            raise HTTPException(status_code=500, detail=f"Failed to load model: {str(e)}")
+        _resolve_model(request.model_name, predictor)
 
     start_time = time.perf_counter()
 
@@ -169,36 +174,12 @@ async def predict_batch(
     predictor: DefectPredictor = Depends(get_predictor),
 ) -> BatchPredictResponse:
     """バッチ画像の傷分類を実行"""
-    # モデル切り替え処理
     if request.model_name:
-        model_path = CHECKPOINTS_DIR / request.model_name
-        if not model_path.exists():
-            # 拡張子がない場合は.pthを付与して再試行
-            model_path_with_ext = CHECKPOINTS_DIR / f"{request.model_name}.pth"
-            if model_path_with_ext.exists():
-                model_path = model_path_with_ext
-            else:
-                 raise HTTPException(
-                    status_code=400, 
-                    detail=f"Model '{request.model_name}' not found in checkpoints"
-                )
-        
-        try:
-            predictor.reload_model(model_path)
-        except Exception as e:
-            raise HTTPException(status_code=500, detail=f"Failed to load model: {str(e)}")
+        _resolve_model(request.model_name, predictor)
 
     start_time = time.perf_counter()
 
     try:
-        # 各画像をデコード
-        # import base64, io, numpy, PIL are already imported at top level now?
-        # Check imports. I moved imports to top level.
-        # But predict_batch has local imports in current file. I should verify if I need to remove them or if they are shadowed.
-        # The previous replace removed them from top? No, I added them.
-        # So I should remove local imports if possible, or just leave them.
-        # I will update the code to use top level imports and capture PIL images.
-        
         pil_images = []
         images = []
         for img_b64 in request.images:

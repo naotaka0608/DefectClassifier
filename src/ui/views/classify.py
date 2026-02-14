@@ -40,7 +40,7 @@ def show_classify_page():
             image_viewer(uploaded_file, caption="アップロード画像")
 
             # 分類実行ボタン
-            if st.button("🔍 分類を実行", use_container_width=True):
+            if st.button("🔍 分類を実行", width="stretch"):
                 _run_classification(image, category_manager)
 
     with col2:

@@ -14,3 +14,4 @@ ANNOTATIONS_FILE = TRAIN_DIR / "annotations.json"
 
 # Configuration
 MODEL_CONFIG_PATH = CONFIG_DIR / "model_config.yaml"
+CATEGORIES_CONFIG_PATH = CONFIG_DIR / "categories.yaml"

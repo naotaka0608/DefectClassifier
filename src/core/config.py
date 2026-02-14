@@ -99,7 +99,7 @@ def save_config(config: AppConfig, config_path: Path | str) -> None:
         yaml.dump(config_dict, f, allow_unicode=True, sort_keys=False)
 
 
-# デフォルト設定パス
-DEFAULT_CONFIG_DIR = Path(__file__).parent.parent.parent / "config"
-DEFAULT_MODEL_CONFIG = DEFAULT_CONFIG_DIR / "model_config.yaml"
-DEFAULT_CATEGORIES_CONFIG = DEFAULT_CONFIG_DIR / "categories.yaml"
+# 後方互換性のため、constants.py から再エクスポート
+from src.core.constants import CONFIG_DIR as DEFAULT_CONFIG_DIR  # noqa: F401
+from src.core.constants import MODEL_CONFIG_PATH as DEFAULT_MODEL_CONFIG  # noqa: F401
+from src.core.constants import CATEGORIES_CONFIG_PATH as DEFAULT_CATEGORIES_CONFIG  # noqa: F401
