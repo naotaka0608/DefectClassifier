@@ -23,8 +23,9 @@ class DefectDataset(Dataset):
     def __init__(
         self,
         data_dir: Path | str,
-        annotation_file: Path | str,
         category_manager: CategoryManager,
+        annotation_file: Optional[Path | str] = None,
+        samples: Optional[list[dict]] = None,
         transform: Optional[Callable] = None,
         is_training: bool = True,
         aug_config: Optional[AugmentationConfig] = None,
@@ -34,15 +35,21 @@ class DefectDataset(Dataset):
         self.aug_config = aug_config or AugmentationConfig()
         self.transform = transform or self._default_transform(is_training)
 
-        # アノテーション読み込み
-        data_manager = DataManager(annotation_file)
-        self.samples = data_manager.load_annotations()
+        # サンプルの取得: 直接渡されたリストを優先、なければファイルから読み込み
+        if samples is not None:
+            self.samples = samples
+        elif annotation_file is not None:
+            data_manager = DataManager(annotation_file)
+            self.samples = data_manager.load_annotations()
+        else:
+            raise ValueError("annotation_file か samples のどちらかを指定してください")
             
         # image_pathの補完
         for sample in self.samples:
             if "image_path" not in sample and "file_name" in sample:
                 rel_path = TRAIN_IMAGES_DIR.relative_to(DATA_DIR)
                 sample["image_path"] = f"{rel_path}/{sample['file_name']}"
+
 
     def __len__(self) -> int:
         return len(self.samples)

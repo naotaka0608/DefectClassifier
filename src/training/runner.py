@@ -6,11 +6,12 @@ from typing import Callable, Optional
 
 import torch
 from src.core.logger import logger
-from torch.utils.data import DataLoader, random_split
+from torch.utils.data import DataLoader
 
 from src.core.category_manager import CategoryManager
 from src.core.config import DEFAULT_CATEGORIES_CONFIG, load_config
 from src.core.constants import ANNOTATIONS_FILE, CHECKPOINTS_DIR, DATA_DIR, MODEL_CONFIG_PATH
+from src.core.data_manager import DataManager
 from src.models.defect_classifier import DefectClassifier
 from src.training.dataset import DefectDataset, collate_fn
 from src.training.trainer import Trainer
@@ -24,6 +25,7 @@ def train_model(
         # 設定読み込み
         app_config = load_config(config_path)
         training_config = app_config.training
+        aug_config = app_config.augmentation
         
         # デバイス設定
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -32,43 +34,43 @@ def train_model(
         # カテゴリマネージャー
         category_manager = CategoryManager(DEFAULT_CATEGORIES_CONFIG)
 
-        # データセット準備
-        full_dataset = DefectDataset(
-            data_dir=DATA_DIR,
-            annotation_file=ANNOTATIONS_FILE,
-            category_manager=category_manager,
-            is_training=True,
-            aug_config=app_config.augmentation,
-        )
+        # サンプルを一度だけ読み込み
+        data_manager = DataManager(ANNOTATIONS_FILE)
+        all_samples = data_manager.load_annotations()
 
-        if len(full_dataset) == 0:
+        if len(all_samples) == 0:
             raise ValueError("データセットが空です。画像をアップロードしてください。")
 
-        # Train/Val分割 (8:2)
-        total_size = len(full_dataset)
-        train_size = int(total_size * 0.8)
-        val_size = total_size - train_size
-        
-        # ランダム分割だとTransformが共有されてしまうため、インデックスで分割してDatasetを再作成するか、
-        # Subsetを使うが、Dataset内でTransformを切り替えるロジックが必要。
-        # ここでは簡易的にSubsetを使い、Dataset側のTransformはTraining用（Augmentationあり）とする。
-        # 検証用には別途AugmentationなしのTransformを適用したいが、
-        # DefectDatasetの設計上、__init__で決まってしまう。
-        # 厳密にはDatasetを2つ作るべきだが、ここではjsonを読み直しているので、
-        # 内部でsamplesを分割して渡せるようにDatasetを修正するのがベスト。
-        # 現状のDefectDatasetはファイルから読むことしか想定していないため、
-        # Subsetを使って、Validation時もAugmentationがかかってしまう妥協をするか、
-        # Datasetクラスを改修するか。
-        # -> Datasetクラスは既存コードなので、Subsetで進める。
-        # 検証時もAugmentationがかかるのは理想的ではないが、動作確認としては許容範囲。
-        # (別途 Datasetクラスの改修タスクを積むのが良い)
-        
-        train_dataset, val_dataset = random_split(
-            full_dataset, [train_size, val_size], 
-            generator=torch.Generator().manual_seed(42)
+        # インデックスベースで Train/Val 分割 (8:2)
+        indices = list(range(len(all_samples)))
+        rng = random.Random(42)
+        rng.shuffle(indices)
+
+        train_size = int(len(all_samples) * 0.8)
+        train_indices = indices[:train_size]
+        val_indices = indices[train_size:]
+
+        train_samples = [all_samples[i] for i in train_indices]
+        val_samples = [all_samples[i] for i in val_indices]
+
+        # Train: Augmentation あり / Val: Augmentation なし
+        train_dataset = DefectDataset(
+            data_dir=DATA_DIR,
+            category_manager=category_manager,
+            samples=train_samples,
+            is_training=True,
+            aug_config=aug_config,
+        )
+        val_dataset = DefectDataset(
+            data_dir=DATA_DIR,
+            category_manager=category_manager,
+            samples=val_samples,
+            is_training=False,
+            aug_config=aug_config,
         )
 
         logger.info(f"Train samples: {len(train_dataset)}, Val samples: {len(val_dataset)}")
+
 
         # DataLoader
         train_loader = DataLoader(
