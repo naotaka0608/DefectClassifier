@@ -6,6 +6,7 @@ import streamlit as st
 
 from src.core.category_manager import CategoryManager
 from src.core.config import DEFAULT_CATEGORIES_CONFIG
+from src.core.constants import CHECKPOINTS_DIR, CONFIG_DIR, DATA_DIR
 
 
 def show_settings_page():
@@ -92,7 +93,7 @@ def _show_model_settings_tab():
     st.markdown("#### 📌 現在のモデル")
 
     model_info = {
-        "モデルパス": "checkpoints/best_model.pth",
+        "モデルパス": str(CHECKPOINTS_DIR / "best_model.pth"),
         "バックボーン": "ResNet50",
         "学習日時": "2026-02-05 09:00",
         "エポック数": 200,
@@ -178,15 +179,14 @@ def _show_system_info_tab():
     from pathlib import Path
 
     dirs = {
-        "設定ファイル": "config/",
-        "チェックポイント": "checkpoints/",
-        "データ": "data/",
-        "ログ": "logs/",
+        "設定ファイル": CONFIG_DIR,
+        "チェックポイント": CHECKPOINTS_DIR,
+        "データ": DATA_DIR,
+        "ログ": Path("logs"),
     }
 
     for name, path in dirs.items():
-        full_path = Path(__file__).parent.parent.parent.parent / path
-        exists = "✅" if full_path.exists() else "❌"
+        exists = "✅" if path.exists() else "❌"
         st.markdown(f"**{name}**: `{path}` {exists}")
 
     st.markdown("---")

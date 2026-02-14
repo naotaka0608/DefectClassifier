@@ -10,19 +10,13 @@ from torch.utils.data import DataLoader, random_split
 
 from src.core.category_manager import CategoryManager
 from src.core.config import DEFAULT_CATEGORIES_CONFIG, load_config
+from src.core.constants import ANNOTATIONS_FILE, CHECKPOINTS_DIR, DATA_DIR, MODEL_CONFIG_PATH
 from src.models.defect_classifier import DefectClassifier
 from src.training.dataset import DefectDataset, collate_fn
 from src.training.trainer import Trainer
 
-# パス設定
-PROJECT_ROOT = Path(__file__).parent.parent.parent
-CONFIG_PATH = PROJECT_ROOT / "config/model_config.yaml"
-DATA_DIR = PROJECT_ROOT / "data"
-ANNOTATIONS_FILE = DATA_DIR / "processed/train/annotations.json"
-CHECKPOINT_DIR = PROJECT_ROOT / "checkpoints"
-
 def train_model(
-    config_path: Path | str = CONFIG_PATH,
+    config_path: Path | str = MODEL_CONFIG_PATH,
     progress_callback: Optional[Callable[[dict], None]] = None,
 ):
     """モデル学習を実行"""
@@ -114,7 +108,7 @@ def train_model(
             model=model,
             config=training_config,
             device=device,
-            checkpoint_dir=CHECKPOINT_DIR
+            checkpoint_dir=CHECKPOINTS_DIR
         )
 
         # 学習実行

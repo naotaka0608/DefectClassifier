@@ -18,6 +18,7 @@ from src.api.routes import categories, health, predict
 
 import yaml
 from src.core.category_manager import CategoryManager
+from src.core.constants import CHECKPOINTS_DIR, CONFIG_DIR
 from src.inference.predictor import DefectPredictor
 from src.api.routes.predict import set_category_manager, set_predictor, set_config
 
@@ -27,9 +28,9 @@ async def lifespan(app: FastAPI):
     logger.info("Starting Hantei API...")
     
     # 設定読み込み
-    config_dir = project_root / "config"
-    model_config_path = config_dir / "model_config.yaml"
-    category_config_path = config_dir / "categories.yaml"
+    # 設定読み込み
+    model_config_path = CONFIG_DIR / "model_config.yaml"
+    category_config_path = CONFIG_DIR / "categories.yaml"
     
     try:
         # カテゴリマネージャー初期化
@@ -54,10 +55,10 @@ async def lifespan(app: FastAPI):
         # モデル初期化
         logger.info("Loading model...")
         # 仮定: best_model.pth が存在するとする
-        model_path = project_root / "checkpoints" / "best_model.pth"
+        model_path = CHECKPOINTS_DIR / "best_model.pth"
         if not model_path.exists():
             logger.warning(f"Default model not found at {model_path}. Trying final_model.pth")
-            model_path = project_root / "checkpoints" / "final_model.pth"
+            model_path = CHECKPOINTS_DIR / "final_model.pth"
             
         if model_path.exists():
             predictor = DefectPredictor(

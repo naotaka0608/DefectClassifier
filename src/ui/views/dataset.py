@@ -12,12 +12,7 @@ from PIL import Image
 
 from src.core.category_manager import CategoryManager
 from src.core.config import DEFAULT_CATEGORIES_CONFIG
-
-# データディレクトリ設定
-DATA_DIR = Path("data")
-TRAIN_DIR = DATA_DIR / "processed/train"
-IMAGES_DIR = TRAIN_DIR / "images"
-ANNOTATIONS_FILE = TRAIN_DIR / "annotations.json"
+from src.core.constants import ANNOTATIONS_FILE, TRAIN_IMAGES_DIR
 
 
 def show_dataset_page():
@@ -121,7 +116,7 @@ def _show_upload_section(category_manager: CategoryManager):
 def _save_uploaded_images(uploaded_files, cause, shape, depth):
     """アップロードされた画像を保存し、アノテーションを更新"""
     # ディレクトリ作成
-    IMAGES_DIR.mkdir(parents=True, exist_ok=True)
+    TRAIN_IMAGES_DIR.mkdir(parents=True, exist_ok=True)
     
     # 既存アノテーション読み込み
     annotations = _load_annotations()
@@ -132,7 +127,7 @@ def _save_uploaded_images(uploaded_files, cause, shape, depth):
         # 一意なファイル名を生成
         file_ext = Path(file.name).suffix
         unique_name = f"{uuid.uuid4().hex}{file_ext}"
-        save_path = IMAGES_DIR / unique_name
+        save_path = TRAIN_IMAGES_DIR / unique_name
         
         # 画像保存
         with open(save_path, "wb") as f:
@@ -187,7 +182,7 @@ def _load_annotations():
 
 def _show_image_detail(row):
     """画像詳細を表示"""
-    image_path = IMAGES_DIR / row["file_name"]
+    image_path = TRAIN_IMAGES_DIR / row["file_name"]
     
     col1, col2 = st.columns([1, 1])
     

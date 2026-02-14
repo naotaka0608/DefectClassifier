@@ -20,6 +20,7 @@ from src.api.schemas.response import (
     PredictResponse,
 )
 from src.core.category_manager import CategoryManager
+from src.core.constants import CHECKPOINTS_DIR, INBOX_DIR
 from src.inference.predictor import DefectPredictor
 
 router = APIRouter(prefix="/api/v1", tags=["prediction"])
@@ -64,7 +65,7 @@ def _save_inference_log(image: Image.Image, result: PredictResponse):
         request_id = str(uuid.uuid4())
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         filename_base = f"{timestamp}_{request_id[:8]}"
-        save_dir = Path("data/inbox")
+        save_dir = INBOX_DIR
         save_dir.mkdir(parents=True, exist_ok=True)
 
         # 画像保存
@@ -101,10 +102,10 @@ async def predict_single(
     """単一画像の傷分類を実行"""
     # モデル切り替え処理
     if request.model_name:
-        model_path = Path("checkpoints") / request.model_name
+        model_path = CHECKPOINTS_DIR / request.model_name
         if not model_path.exists():
             # 拡張子がない場合は.pthを付与して再試行
-            model_path_with_ext = Path("checkpoints") / f"{request.model_name}.pth"
+            model_path_with_ext = CHECKPOINTS_DIR / f"{request.model_name}.pth"
             if model_path_with_ext.exists():
                 model_path = model_path_with_ext
             else:
@@ -170,10 +171,10 @@ async def predict_batch(
     """バッチ画像の傷分類を実行"""
     # モデル切り替え処理
     if request.model_name:
-        model_path = Path("checkpoints") / request.model_name
+        model_path = CHECKPOINTS_DIR / request.model_name
         if not model_path.exists():
             # 拡張子がない場合は.pthを付与して再試行
-            model_path_with_ext = Path("checkpoints") / f"{request.model_name}.pth"
+            model_path_with_ext = CHECKPOINTS_DIR / f"{request.model_name}.pth"
             if model_path_with_ext.exists():
                 model_path = model_path_with_ext
             else:

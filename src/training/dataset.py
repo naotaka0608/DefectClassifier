@@ -12,6 +12,7 @@ from PIL import Image
 from torch.utils.data import Dataset
 
 from src.core.category_manager import CategoryManager
+from src.core.constants import DATA_DIR, TRAIN_IMAGES_DIR
 
 
 class DefectDataset(Dataset):
@@ -43,7 +44,8 @@ class DefectDataset(Dataset):
         for sample in self.samples:
             if "image_path" not in sample and "file_name" in sample:
                 # デフォルトのパス構造を仮定
-                sample["image_path"] = f"processed/train/images/{sample['file_name']}"
+                rel_path = TRAIN_IMAGES_DIR.relative_to(DATA_DIR)
+                sample["image_path"] = f"{rel_path}/{sample['file_name']}"
 
     def __len__(self) -> int:
         return len(self.samples)

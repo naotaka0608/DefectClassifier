@@ -10,13 +10,7 @@ from PIL import Image
 
 from src.core.category_manager import CategoryManager
 from src.core.config import DEFAULT_CATEGORIES_CONFIG
-
-# データディレクトリ設定
-DATA_DIR = Path("data")
-INBOX_DIR = DATA_DIR / "inbox"
-TRAIN_DIR = DATA_DIR / "processed/train"
-IMAGES_DIR = TRAIN_DIR / "images"
-ANNOTATIONS_FILE = TRAIN_DIR / "annotations.json"
+from src.core.constants import ANNOTATIONS_FILE, INBOX_DIR, TRAIN_IMAGES_DIR
 
 
 def show_inbox_page():
@@ -26,7 +20,7 @@ def show_inbox_page():
 
     # ディレクトリ作成（念のため）
     INBOX_DIR.mkdir(parents=True, exist_ok=True)
-    IMAGES_DIR.mkdir(parents=True, exist_ok=True)
+    TRAIN_IMAGES_DIR.mkdir(parents=True, exist_ok=True)
 
     # カテゴリマネージャー初期化
     if "category_manager" not in st.session_state:
@@ -142,11 +136,11 @@ def _add_to_dataset(image_path: Path, json_path: Path, cause, shape, depth):
         new_filename = image_path.name
         # もし同名ファイルがあればタイムスタンプなどを付与するなどすべきだが、
         # 今回はUUID付きなので基本大丈夫。念のためチェック
-        target_image_path = IMAGES_DIR / new_filename
+        target_image_path = TRAIN_IMAGES_DIR / new_filename
         if target_image_path.exists():
             st.warning("同名のファイルが存在します。")
             timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
-            target_image_path = IMAGES_DIR / f"{timestamp}_{new_filename}"
+            target_image_path = TRAIN_IMAGES_DIR / f"{timestamp}_{new_filename}"
             
         shutil.move(str(image_path), str(target_image_path))
         

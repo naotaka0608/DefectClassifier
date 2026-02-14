@@ -8,6 +8,7 @@ import plotly.graph_objects as go
 import streamlit as st
 
 from src.core.config import DEFAULT_MODEL_CONFIG, load_config
+from src.core.constants import CHECKPOINTS_DIR, MODEL_CONFIG_PATH, PROCESSED_DIR
 
 
 def show_training_page():
@@ -44,7 +45,7 @@ def _show_training_tab():
         st.markdown("#### 📁 データセット")
         data_dir = st.text_input(
             "データディレクトリ",
-            value="data/processed",
+            value=str(PROCESSED_DIR),
             help="学習データが格納されているディレクトリ",
         )
 
@@ -152,7 +153,7 @@ def _show_training_tab():
 
 def _save_training_config(settings):
     """学習設定を保存"""
-    config_path = Path("config/model_config.yaml")
+    config_path = MODEL_CONFIG_PATH
     if config_path.exists():
         with open(config_path, "r", encoding="utf-8") as f:
             config = yaml.safe_load(f)
