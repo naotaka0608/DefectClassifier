@@ -76,10 +76,10 @@ def _show_category_management_tab():
     # 保存ボタン
     col1, col2 = st.columns(2)
     with col1:
-        if st.button("💾 変更を保存", use_container_width=True):
+        if st.button("💾 変更を保存", width="stretch"):
             st.success("設定を保存しました！")
     with col2:
-        if st.button("🔄 リセット", use_container_width=True):
+        if st.button("🔄 リセット", width="stretch"):
             st.session_state.category_manager = CategoryManager(DEFAULT_CATEGORIES_CONFIG)
             st.info("設定をリセットしました。")
             st.rerun()
@@ -115,7 +115,7 @@ def _show_model_settings_tab():
     )
 
     if uploaded_model:
-        if st.button("🔄 モデルを読み込み", use_container_width=True):
+        if st.button("🔄 モデルを読み込み", width="stretch"):
             with st.spinner("モデルを読み込み中..."):
                 # 実際の実装ではモデルを読み込む
                 pass
@@ -139,7 +139,7 @@ def _show_model_settings_tab():
         step=0.05,
     )
 
-    if st.button("💾 デフォルト設定を保存", use_container_width=True):
+    if st.button("💾 デフォルト設定を保存", width="stretch"):
         st.success("デフォルト設定を保存しました！")
 
 

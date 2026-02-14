@@ -95,7 +95,7 @@ def _show_training_tab():
         status_text = st.empty()
         chart_container = st.empty()
 
-        if st.button("🚀 学習開始", use_container_width=True, type="primary"):
+        if st.button("🚀 学習開始", type="primary", width="stretch"):
             # 設定を保存
             _save_training_config(current_settings)
             
@@ -218,7 +218,7 @@ def _show_augmentation_settings_tab():
         }
 
     st.markdown("---")
-    if st.button("💾 データ拡張設定を保存", use_container_width=True):
+    if st.button("💾 データ拡張設定を保存", width="stretch"):
         _save_augmentation_config(current_settings)
         st.success("データ拡張設定を保存しました！")
 
@@ -299,7 +299,7 @@ def _plot_training_history(history: dict):
         margin=dict(l=40, r=40, t=60, b=40),
         legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
     )
-    st.plotly_chart(fig1, use_container_width=True, key=f"loss_chart_{len(epochs)}")
+    st.plotly_chart(fig1, width="stretch", key=f"loss_chart_{len(epochs)}")
 
     # 精度グラフ
     fig2 = go.Figure()
@@ -322,7 +322,7 @@ def _plot_training_history(history: dict):
         height=250,
         margin=dict(l=40, r=40, t=60, b=40),
     )
-    st.plotly_chart(fig2, use_container_width=True, key=f"acc_chart_{len(epochs)}")
+    st.plotly_chart(fig2, width="stretch", key=f"acc_chart_{len(epochs)}")
 
 
 def _show_history_tab():

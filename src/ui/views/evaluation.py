@@ -101,7 +101,7 @@ def _show_summary_tab(category_manager: CategoryManager):
             margin=dict(l=40, r=40, t=60, b=40),
         )
 
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, width="stretch")
 
 
 def _show_confusion_matrix_tab(category_manager: CategoryManager):
@@ -148,7 +148,7 @@ def _show_confusion_matrix_tab(category_manager: CategoryManager):
         margin=dict(l=40, r=40, t=60, b=40),
     )
 
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, width="stretch")
 
     # 統計情報
     st.markdown("### 📊 統計情報")
@@ -194,7 +194,7 @@ def _show_detailed_analysis_tab(category_manager: CategoryManager):
         import pandas as pd
 
         df = pd.DataFrame(data)
-        st.dataframe(df, use_container_width=True, hide_index=True)
+        st.dataframe(df, width="stretch", hide_index=True)
 
         st.markdown("---")
 
@@ -208,7 +208,7 @@ def _show_detailed_analysis_tab(category_manager: CategoryManager):
             data="dummy,csv,data",
             file_name="evaluation_report.csv",
             mime="text/csv",
-            use_container_width=True,
+            width="stretch",
         )
 
     with col2:
@@ -217,5 +217,5 @@ def _show_detailed_analysis_tab(category_manager: CategoryManager):
             data=b"dummy_pdf_data",
             file_name="evaluation_report.pdf",
             mime="application/pdf",
-            use_container_width=True,
+            width="stretch",
         )

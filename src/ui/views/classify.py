@@ -9,6 +9,7 @@ from PIL import Image
 
 from src.core.category_manager import CategoryManager
 from src.core.config import DEFAULT_CATEGORIES_CONFIG
+from src.ui.components.image_viewer import image_viewer
 
 
 def show_classify_page():
@@ -36,7 +37,7 @@ def show_classify_page():
 
         if uploaded_file is not None:
             image = Image.open(uploaded_file).convert("RGB")
-            st.image(image, caption="アップロード画像", use_container_width=True)
+            image_viewer(uploaded_file, caption="アップロード画像")
 
             # 分類実行ボタン
             if st.button("🔍 分類を実行", use_container_width=True):
@@ -154,4 +155,4 @@ def _display_results(result: dict, probs: dict, category_manager: CategoryManage
                 margin=dict(l=40, r=40, t=60, b=40),
             )
 
-            st.plotly_chart(fig, use_container_width=True)
+            st.plotly_chart(fig, width="stretch")

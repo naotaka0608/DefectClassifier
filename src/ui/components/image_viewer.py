@@ -9,7 +9,7 @@ def image_viewer(image_path: Path | str, caption: str = "", use_container_width:
     Args:
         image_path (Path | str): 画像ファイルのパス
         caption (str): 画像のキャプション
-        use_container_width (bool): コンテナ幅いっぱいに表示するかどうか
+        use_container_width (bool): コンテナ幅いっぱいに表示するかどうか（Trueの場合 width="stretch" を使用）
     """
     path_obj = Path(image_path)
     
@@ -19,6 +19,8 @@ def image_viewer(image_path: Path | str, caption: str = "", use_container_width:
 
     try:
         image = Image.open(path_obj)
-        st.image(image, caption=caption, use_container_width=use_container_width)
+        # use_container_width is deprecated, use width="stretch"
+        width = "stretch" if use_container_width else None
+        st.image(image, caption=caption, width=width)
     except Exception as e:
         st.error(f"画像の読み込みに失敗しました: {e}")
