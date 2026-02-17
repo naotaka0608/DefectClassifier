@@ -129,96 +129,11 @@ data/
 
 ---
 
-## API使用例
+## 外部連携API
 
-### 単一画像の分類
+詳細なAPI仕様（JSONフォーマット、エンドポイント一覧）については、以下のドキュメントを参照してください：
 
-```bash
-# 画像をBase64エンコード
-IMAGE_BASE64=$(base64 -w 0 test_image.jpg)
-
-# API呼び出し
-curl -X POST "http://localhost:8000/api/v1/predict" \
-  -H "Content-Type: application/json" \
-  -d "{\"image_base64\": \"$IMAGE_BASE64\"}"
-```
-
-### レスポンス例
-
-```json
-{
-  "success": true,
-  "cause": {
-    "label": "擦り傷",
-    "confidence": 0.92,
-    "class_id": 0
-  },
-  "shape": {
-    "label": "線状",
-    "confidence": 0.88,
-    "class_id": 0
-  },
-  "depth": {
-    "label": "表層",
-    "confidence": 0.85,
-    "class_id": 0
-  },
-  "inference_time_ms": 45.2,
-  "model_version": "best_model"
-}
-```
-
-### 複数画像の分類（バッチ処理）
-
-```bash
-curl -X POST "http://localhost:8000/api/v1/predict/batch" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "images": ["BASE64_IMG_1", "BASE64_IMG_2", "BASE64_IMG_3"],
-    "return_confidence": true
-  }'
-```
-
-#### レスポンス例（3枚の場合）
-
-```json
-{
-  "success": true,
-  "results": [
-    {
-      "success": true,
-      "cause": { "label": "擦り傷", "confidence": 0.95, "class_id": 0 },
-      "shape": { "label": "線状", "confidence": 0.88, "class_id": 1 },
-      "depth": { "label": "表層", "confidence": 0.75, "class_id": 2 },
-      "inference_time_ms": 15.5,
-      "model_version": "v1.0.0"
-    },
-    {
-      "success": true,
-      "cause": { "label": "打痕", "confidence": 0.92, "class_id": 1 },
-      "shape": { "label": "点状", "confidence": 0.85, "class_id": 0 },
-      "depth": { "label": "中層", "confidence": 0.80, "class_id": 1 },
-      "inference_time_ms": 15.5,
-      "model_version": "v1.0.0"
-    },
-    {
-      "success": true,
-      "cause": { "label": "打痕", "confidence": 0.98, "class_id": 1 },
-      "shape": { "label": "点状", "confidence": 0.90, "class_id": 0 },
-      "depth": { "label": "深層", "confidence": 0.88, "class_id": 2 },
-      "inference_time_ms": 15.5,
-      "model_version": "v1.0.0"
-    }
-  ],
-  "total_inference_time_ms": 52.5
-}
-```
-
-### カテゴリ一覧の取得
-
-```bash
-curl "http://localhost:8000/api/v1/categories"
-```
+[外部連携API仕様書 (docs/external_api.md)](docs/external_api.md)
 
 ---
 
