@@ -1,14 +1,14 @@
 
 import random
-from typing import List, TypeVar, Tuple
+from typing import TypeVar
 
 T = TypeVar("T")
 
 def split_dataset(
-    samples: List[T],
+    samples: list[T],
     train_ratio: float = 0.8,
     seed: int = 42
-) -> Tuple[List[T], List[T]]:
+) -> tuple[list[T], list[T]]:
     """
     データセットを学習用と検証用に分割します。
     常に同じシードを使用することで、学習と評価で一貫した分割を保証します。

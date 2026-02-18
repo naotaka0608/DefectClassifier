@@ -86,6 +86,14 @@ class CategoryManager:
 
     def is_compatible_with_model(self, model_config: dict) -> bool:
         """モデルとの互換性をチェック"""
+        # 新形式: task_config 辞書
+        if "task_config" in model_config:
+            task_config = model_config["task_config"]
+            return all(
+                self.get_num_classes(task) == task_config.get(task)
+                for task in self._categories
+            )
+        # レガシー形式: num_cause_classes 等の個別キー
         return (
             self.get_num_classes("cause") == model_config.get("num_cause_classes")
             and self.get_num_classes("shape") == model_config.get("num_shape_classes")

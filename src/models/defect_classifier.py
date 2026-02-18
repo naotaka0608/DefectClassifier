@@ -62,16 +62,19 @@ class DefectClassifier(nn.Module):
         """モデル設定を取得"""
         return {
             "task_config": self.task_config,
-            # Legacy compatibility (optional, but specific keys might be expected by old code analysis?)
-            # For now, we commit to the new structure.
+            # Note: We only save minimal config needed to reconstruct the model architecture
+            # specific to the task dimensions. Other hyperparameters are passed via initialization.
         }
 
     @classmethod
     def from_config(cls, config: dict) -> "DefectClassifier":
         """設定辞書からモデルを生成"""
-        # Legacy config support
+        # Legacy config support (Deprecated)
+        # Old config format used flattened keys like "num_cause_classes"
+        # New format uses nested "task_config" dictionary
         if "task_config" not in config:
              from src.core.types import TaskType
+             # logger.warning("Using legacy config format for DefectClassifier. This will be removed in future versions.")
              task_config = {
                  TaskType.CAUSE: config.get("num_cause_classes", 6),
                  TaskType.SHAPE: config.get("num_shape_classes", 3),

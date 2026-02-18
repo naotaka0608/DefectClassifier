@@ -70,9 +70,7 @@ class Trainer:
         )
 
         self.criterion = MultiTaskLoss(
-            cause_weight=config.loss_weights[TaskType.CAUSE],
-            shape_weight=config.loss_weights[TaskType.SHAPE],
-            depth_weight=config.loss_weights[TaskType.DEPTH],
+            task_weights=config.loss_weights,
             label_smoothing=config.label_smoothing,
         )
 
@@ -155,6 +153,45 @@ class Trainer:
 
         return history
 
+    def _train_step(self, batch: dict) -> float:
+        """1バッチの学習ステップ"""
+        images = batch["image"].to(self.device)
+        labels = {k: v.to(self.device) for k, v in batch["labels"].items()}
+
+        self.optimizer.zero_grad()
+
+        with torch.amp.autocast("cuda", enabled=self.scaler is not None):
+            predictions = self.model(images)
+            loss, _ = self.criterion(predictions, labels)
+
+        if self.scaler:
+            self.scaler.scale(loss).backward()
+            self.scaler.unscale_(self.optimizer)
+            torch.nn.utils.clip_grad_norm_(
+                self.model.parameters(), self.config.gradient_clip
+            )
+            self.scaler.step(self.optimizer)
+            self.scaler.update()
+        else:
+            loss.backward()
+            torch.nn.utils.clip_grad_norm_(
+                self.model.parameters(), self.config.gradient_clip
+            )
+            self.optimizer.step()
+
+        return loss.item()
+
+    def _validate_step(self, batch: dict) -> tuple[float, dict, dict]:
+        """1バッチの検証ステップ"""
+        images = batch["image"].to(self.device)
+        labels = {k: v.to(self.device) for k, v in batch["labels"].items()}
+
+        with torch.amp.autocast("cuda", enabled=self.scaler is not None):
+            predictions = self.model(images)
+            loss, _ = self.criterion(predictions, labels)
+
+        return loss.item(), predictions, labels
+
     def _train_epoch(self, loader: DataLoader) -> float:
         """1エポック学習"""
         self.model.train()
@@ -162,34 +199,9 @@ class Trainer:
 
         pbar = tqdm(loader, desc=f"Training Epoch {self.current_epoch + 1}")
         for batch in pbar:
-            images = batch["image"].to(self.device)
-            labels = {k: v.to(self.device) for k, v in batch["labels"].items()}
-
-            self.optimizer.zero_grad()
-
-            if self.scaler:
-                with torch.amp.autocast("cuda"):
-                    predictions = self.model(images)
-                    loss, _ = self.criterion(predictions, labels)
-
-                self.scaler.scale(loss).backward()
-                self.scaler.unscale_(self.optimizer)
-                torch.nn.utils.clip_grad_norm_(
-                    self.model.parameters(), self.config.gradient_clip
-                )
-                self.scaler.step(self.optimizer)
-                self.scaler.update()
-            else:
-                predictions = self.model(images)
-                loss, _ = self.criterion(predictions, labels)
-                loss.backward()
-                torch.nn.utils.clip_grad_norm_(
-                    self.model.parameters(), self.config.gradient_clip
-                )
-                self.optimizer.step()
-
-            total_loss += loss.item()
-            pbar.set_postfix({"loss": loss.item()})
+            loss = self._train_step(batch)
+            total_loss += loss
+            pbar.set_postfix({"loss": loss})
 
         return total_loss / len(loader)
 
@@ -201,13 +213,8 @@ class Trainer:
         self.metrics.reset()
 
         for batch in tqdm(loader, desc="Validation"):
-            images = batch["image"].to(self.device)
-            labels = {k: v.to(self.device) for k, v in batch["labels"].items()}
-
-            predictions = self.model(images)
-            loss, _ = self.criterion(predictions, labels)
-
-            total_loss += loss.item()
+            loss, predictions, labels = self._validate_step(batch)
+            total_loss += loss
             self.metrics.update(predictions, labels)
 
         return total_loss / len(loader), self.metrics.compute()

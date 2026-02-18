@@ -96,6 +96,34 @@ def _save_inference_log(image: Image.Image, result: PredictResponse, config: Opt
         logger.error(f"Failed to save inference log: {e}")
 
 
+def _to_predict_response(
+    result,
+    inference_time_ms: float,
+    model_version: str,
+) -> PredictResponse:
+    """PredictionResult を PredictResponse に変換"""
+    return PredictResponse(
+        success=True,
+        cause=ClassificationResultSchema(
+            label=result.cause.label,
+            confidence=result.cause.confidence,
+            class_id=result.cause.class_id,
+        ),
+        shape=ClassificationResultSchema(
+            label=result.shape.label,
+            confidence=result.shape.confidence,
+            class_id=result.shape.class_id,
+        ),
+        depth=ClassificationResultSchema(
+            label=result.depth.label,
+            confidence=result.depth.confidence,
+            class_id=result.depth.class_id,
+        ),
+        inference_time_ms=inference_time_ms,
+        model_version=model_version,
+    )
+
+
 @router.post("/predict", response_model=PredictResponse)
 async def predict_single(
     request: PredictRequest,
@@ -117,27 +145,7 @@ async def predict_single(
         )
 
         inference_time = (time.perf_counter() - start_time) * 1000
-
-        response = PredictResponse(
-            success=True,
-            cause=ClassificationResultSchema(
-                label=result.cause.label,
-                confidence=result.cause.confidence,
-                class_id=result.cause.class_id,
-            ),
-            shape=ClassificationResultSchema(
-                label=result.shape.label,
-                confidence=result.shape.confidence,
-                class_id=result.shape.class_id,
-            ),
-            depth=ClassificationResultSchema(
-                label=result.depth.label,
-                confidence=result.depth.confidence,
-                class_id=result.depth.class_id,
-            ),
-            inference_time_ms=inference_time,
-            model_version=predictor.model_version,
-        )
+        response = _to_predict_response(result, inference_time, predictor.model_version)
 
         # ログ保存
         try:
@@ -184,25 +192,8 @@ async def predict_batch(
 
         response_results = []
         for i, result in enumerate(results):
-            response = PredictResponse(
-                success=True,
-                cause=ClassificationResultSchema(
-                    label=result.cause.label,
-                    confidence=result.cause.confidence,
-                    class_id=result.cause.class_id,
-                ),
-                shape=ClassificationResultSchema(
-                    label=result.shape.label,
-                    confidence=result.shape.confidence,
-                    class_id=result.shape.class_id,
-                ),
-                depth=ClassificationResultSchema(
-                    label=result.depth.label,
-                    confidence=result.depth.confidence,
-                    class_id=result.depth.class_id,
-                ),
-                inference_time_ms=total_time / len(results),
-                model_version=predictor.model_version,
+            response = _to_predict_response(
+                result, total_time / len(results), predictor.model_version
             )
             response_results.append(response)
             

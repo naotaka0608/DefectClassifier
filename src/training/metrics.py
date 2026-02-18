@@ -17,20 +17,13 @@ class MultiTaskMetrics:
             TaskType.SHAPE: 3,
             TaskType.DEPTH: 3,
         }
+        self.task_names = list(self.num_classes.keys())
         self.reset()
 
     def reset(self) -> None:
         """メトリクスをリセット"""
-        self._predictions: dict[str, list[torch.Tensor]] = {
-            TaskType.CAUSE: [],
-            TaskType.SHAPE: [],
-            TaskType.DEPTH: [],
-        }
-        self._targets: dict[str, list[torch.Tensor]] = {
-            TaskType.CAUSE: [],
-            TaskType.SHAPE: [],
-            TaskType.DEPTH: [],
-        }
+        self._predictions: dict[str, list[torch.Tensor]] = {t: [] for t in self.task_names}
+        self._targets: dict[str, list[torch.Tensor]] = {t: [] for t in self.task_names}
 
     def update(
         self,
@@ -38,7 +31,7 @@ class MultiTaskMetrics:
         targets: dict[str, torch.Tensor],
     ) -> None:
         """予測と正解を追加"""
-        for task_name in [TaskType.CAUSE, TaskType.SHAPE, TaskType.DEPTH]:
+        for task_name in self.task_names:
             pred = predictions[task_name].argmax(dim=1).cpu()
             target = targets[task_name].cpu()
             self._predictions[task_name].append(pred)
@@ -48,7 +41,7 @@ class MultiTaskMetrics:
         """メトリクスを計算"""
         metrics = {}
 
-        for task_name in [TaskType.CAUSE, TaskType.SHAPE, TaskType.DEPTH]:
+        for task_name in self.task_names:
             preds = torch.cat(self._predictions[task_name])
             targets = torch.cat(self._targets[task_name])
 
@@ -67,8 +60,8 @@ class MultiTaskMetrics:
 
         # 平均精度
         metrics["mean_accuracy"] = sum(
-            metrics[f"{t}_accuracy"] for t in [TaskType.CAUSE, TaskType.SHAPE, TaskType.DEPTH]
-        ) / 3
+            metrics[f"{t}_accuracy"] for t in self.task_names
+        ) / len(self.task_names)
 
         return metrics
 

@@ -14,18 +14,12 @@ class MultiTaskLoss(nn.Module):
 
     def __init__(
         self,
-        cause_weight: float = 1.0,
-        shape_weight: float = 1.0,
-        depth_weight: float = 1.0,
+        task_weights: Optional[dict[str, float]] = None,
         class_weights: Optional[dict[str, torch.Tensor]] = None,
         label_smoothing: float = 0.1,
     ):
         super().__init__()
-        self.task_weights = {
-            TaskType.CAUSE: cause_weight,
-            TaskType.SHAPE: shape_weight,
-            TaskType.DEPTH: depth_weight,
-        }
+        self.task_weights = task_weights or {t: 1.0 for t in TaskType}
         self.label_smoothing = label_smoothing
         self.class_weights = class_weights or {}
 

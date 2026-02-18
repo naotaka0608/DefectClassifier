@@ -57,15 +57,9 @@ class DefectPredictor:
         self.model.eval()
 
         # 前処理
-        self.transform = A.Compose(
-            [
-                A.Resize(224, 224),
-                A.Normalize(
-                    mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]
-                ),
-                ToTensorV2(),
-            ]
-        )
+        # 推論時の設定 (デフォルトは 224x224)
+        from src.training.dataset import DefectDataset
+        self.transform = DefectDataset.get_inference_transform(image_size=[224, 224])
 
         self.model_version = Path(model_path).stem
 

@@ -1,6 +1,5 @@
 """データセットクラス"""
 
-import json
 from pathlib import Path
 from typing import Callable, Optional
 
@@ -13,7 +12,6 @@ from torch.utils.data import Dataset
 
 from src.core.category_manager import CategoryManager
 from src.core.config import AugmentationConfig
-from src.core.constants import DATA_DIR, TRAIN_IMAGES_DIR
 from src.core.data_manager import DataManager
 from src.core.types import TaskType
 
@@ -44,13 +42,6 @@ class DefectDataset(Dataset):
             self.samples = data_manager.load_annotations()
         else:
             raise ValueError("annotation_file か samples のどちらかを指定してください")
-            
-        # image_pathの補完
-        for sample in self.samples:
-            if "image_path" not in sample and "file_name" in sample:
-                rel_path = TRAIN_IMAGES_DIR.relative_to(DATA_DIR)
-                sample["image_path"] = f"{rel_path}/{sample['file_name']}"
-
 
     def __len__(self) -> int:
         return len(self.samples)
@@ -128,11 +119,27 @@ class DefectDataset(Dataset):
 
 
     @staticmethod
-    def get_inference_transform() -> A.Compose:
-        """推論用の変換を取得"""
+    def get_inference_transform(config: Optional[AugmentationConfig] = None, image_size: Optional[list[int]] = None) -> A.Compose:
+        """推論用の変換を取得
+        
+        Args:
+            config: AugmentationConfig (optional)
+            image_size: [height, width] (optional, overrides config)
+        """
+        # デフォルトサイズ
+        height, width = 224, 224
+        
+        if image_size is not None:
+            height, width = image_size[0], image_size[1]
+        elif config is not None:
+            # AugmentationConfig usually has crop_size or resize. 
+            # For inference, we typically want the target input size.
+            # Using crop_size as default target size if available.
+            height, width = config.crop_size[0], config.crop_size[1]
+
         return A.Compose(
             [
-                A.Resize(224, 224),
+                A.Resize(height, width),
                 A.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
                 ToTensorV2(),
             ]
