@@ -26,3 +26,7 @@ logs/
 # Temp files
 *.log
 api_response_examples.txt
+
+# Tests
+tests/external/csharp_client/bin/
+tests/external/csharp_client/obj/
