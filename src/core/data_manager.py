@@ -21,20 +21,25 @@ class DataManager:
             with open(self.annotation_file, "r", encoding="utf-8") as f:
                 data = json.load(f)
 
-                # リスト形式（旧形式）の場合
-                if isinstance(data, list):
-                    # マイグレーション：image_pathがない場合は追加
-                    for item in data:
-                        if "image_path" not in item and "file_name" in item:
-                            # 過去データのパス構造を仮定
-                            item["image_path"] = f"processed/train/images/{item['file_name']}"
-                    return data
+            samples = []
+            if isinstance(data, list):
+                samples = data
+            elif isinstance(data, dict) and "samples" in data:
+                samples = data["samples"]
 
-                # 辞書形式（新形式）の場合
-                if isinstance(data, dict) and "samples" in data:
-                    return data["samples"]
+            # マイグレーション
+            for item in samples:
+                # image_path補完 (新形式 -> 旧形式的な補完)
+                # 注: image_pathは本来絶対パスか相対パスか揺れているが、
+                # train/dataset.py等ではこれを使っている箇所があるかもしれない
+                if "image_path" not in item and "file_name" in item:
+                    item["image_path"] = f"processed/train/images/{item['file_name']}"
+                
+                # file_name補完 (Legacy対応: image_path -> file_name)
+                if "file_name" not in item and "image_path" in item:
+                    item["file_name"] = Path(item["image_path"]).name
 
-                return []
+            return samples
         except Exception:
             return []
 
@@ -81,3 +86,52 @@ class DataManager:
             
         annotations.append(new_sample)
         self.save_annotations(annotations)
+
+    def import_file(
+        self,
+        src_path: Path | str,
+        cause: str,
+        shape: str,
+        depth: str,
+        source: str = "upload",
+    ) -> Path:
+        """
+        ファイルをデータセットディレクトリにインポートし、メタデータを追加
+        
+        Args:
+            src_path: インポート元のファイルパス
+            cause, shape, depth: ラベル
+            source: データソース
+            
+        Returns:
+            dst_path: インポート先のファイルパス
+        """
+        import shutil
+        
+        src_path = Path(src_path)
+        if not src_path.exists():
+            raise FileNotFoundError(f"File not found: {src_path}")
+            
+        # ファイル名衝突回避
+        file_name = src_path.name
+        dst_path = TRAIN_IMAGES_DIR / file_name
+        
+        if dst_path.exists():
+            timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
+            file_name = f"{timestamp}_{src_path.name}"
+            dst_path = TRAIN_IMAGES_DIR / file_name
+            
+        # ファイル移動
+        shutil.move(str(src_path), str(dst_path))
+        
+        # メタデータ登録
+        self.add_sample(
+            file_name=file_name,
+            cause=cause,
+            shape=shape,
+            depth=depth,
+            source=source,
+            original_name=src_path.name
+        )
+        
+        return dst_path

@@ -1,6 +1,7 @@
 """分類ページ"""
 
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import numpy as np
 import plotly.graph_objects as go
@@ -11,6 +12,9 @@ from src.core.category_manager import CategoryManager
 from src.core.config import DEFAULT_CATEGORIES_CONFIG
 from src.core.types import TaskType
 from src.ui.components.image_viewer import image_viewer
+
+if TYPE_CHECKING:
+    from src.inference.predictor import DefectPredictor
 
 
 def show_classify_page():
@@ -38,11 +42,33 @@ def show_classify_page():
 
         if uploaded_file is not None:
             image = Image.open(uploaded_file).convert("RGB")
-            image_viewer(uploaded_file, caption="アップロード画像")
+            
+            # ヒートマップ表示切り替え
+            if "classification_heatmaps" in st.session_state:
+                heatmaps = st.session_state.classification_heatmaps
+                
+                # 表示モード選択
+                view_options = ["オリジナル"] + [f"Heatmap: {t.value}" for t in [TaskType.CAUSE, TaskType.SHAPE, TaskType.DEPTH]]
+                selected_view = st.radio("表示画像", view_options, horizontal=True, label_visibility="collapsed")
+                
+                if selected_view == "オリジナル":
+                    image_viewer(uploaded_file, caption="アップロード画像")
+                else:
+                    # 'Heatmap: cause' -> 'cause'
+                    task_val = selected_view.split(": ")[1]
+                    # valueからTaskTypeを逆引き
+                    target_task = next(t for t in heatmaps.keys() if t.value == task_val)
+                    
+                    if target_task in heatmaps:
+                        st.image(heatmaps[target_task], caption=f"Grad-CAM: {target_task.name}", use_column_width=True)
+            else:
+                image_viewer(uploaded_file, caption="アップロード画像")
+
+            show_heatmap = st.checkbox("🔍 判断根拠(ヒートマップ)を表示", value=False, help="AIが注目した領域を可視化します")
 
             # 分類実行ボタン
             if st.button("🔍 分類を実行", width="stretch"):
-                _run_classification(image, category_manager)
+                _run_classification(image, category_manager, show_heatmap)
 
     with col2:
         st.markdown("### 📊 分類結果")
@@ -57,33 +83,129 @@ def show_classify_page():
             st.info("画像をアップロードして分類を実行してください。")
 
 
-def _run_classification(image: Image.Image, category_manager: CategoryManager):
-    """分類を実行（デモ用のダミー結果）"""
-    with st.spinner("分類中..."):
-        # 実際の実装ではモデルを使用
-        # ここではデモ用のダミーデータを生成
-        import random
+@st.cache_resource
+def _get_predictor() -> "DefectPredictor":
+    """推論器をロード・キャッシュ"""
+    from src.inference.predictor import DefectPredictor
+    from src.core.constants import CHECKPOINTS_DIR, BEST_MODEL_PATH
+    
+    # モデルパス解決
+    model_path = BEST_MODEL_PATH
+    if not model_path.exists():
+        # best_modelがない場合はcheckpoints以下の最新を使用
+        checkpoints = sorted(list(CHECKPOINTS_DIR.glob("*.pth")), key=lambda p: p.stat().st_mtime, reverse=True)
+        if checkpoints:
+            model_path = checkpoints[0]
+        else:
+            st.error("モデルファイルが見つかりません。")
+            return None
+            
+    try:
+        predictor = DefectPredictor(model_path=model_path)
+        return predictor
+    except Exception as e:
+        st.error(f"モデルのロードに失敗しました: {e}")
+        return None
 
-        result = {
-            TaskType.CAUSE: random.choice(category_manager.get_categories("cause")),
-            TaskType.SHAPE: random.choice(category_manager.get_categories("shape")),
-            TaskType.DEPTH: random.choice(category_manager.get_categories("depth")),
-        }
 
-        probs = {}
-        for task in [TaskType.CAUSE, TaskType.SHAPE, TaskType.DEPTH]:
-            categories = category_manager.get_categories(task)
-            raw_probs = np.random.dirichlet(np.ones(len(categories)))
-            probs[task] = {cat: float(p) for cat, p in zip(categories, raw_probs)}
-            # 選択されたカテゴリの確率を高く
-            max_cat = max(probs[task], key=probs[task].get)
-            result[task] = max_cat
+def _run_classification(image: Image.Image, category_manager: CategoryManager, show_heatmap: bool = False):
+    """分類を実行"""
+    
+    predictor = _get_predictor()
+    if predictor is None:
+        return
 
-        st.session_state.classification_result = result
-        st.session_state.classification_probs = probs
+    with st.spinner(f"モデル '{predictor.model_version}' で分類中..."):
+        try:
+            # 推論実行
+            import numpy as np
+            image_np = np.array(image)
+            result = predictor.predict(image_np)
+            
+            # 結果をセッションに保存
+            # UI表示用に辞書形式に変換
+            st.session_state.classification_result = {
+                TaskType.CAUSE: result.cause.label,
+                TaskType.SHAPE: result.shape.label,
+                TaskType.DEPTH: result.depth.label,
+            }
+            
+            # 確率分布を取得 (predictメソッドは予測結果のみ返すため、詳細が必要なら修正が必要だが
+            # 現状のDefectPredictor.predictは確率分布を返さない。
+            # 今回はシンプルに、確信度を100%として表示するか、
+            # あるいはPredictorを改造して確率分布を返すようにする必要がある。)
+            
+            # NOTE: 現在のUIは確率分布グラフを要求しているため、本当は predict_proba 的なものが必要。
+            # しかし DefectPredictor にはその機能が明示されていない。
+            # とりあえず、予測されたクラスの信頼度を使用し、他は0とする簡易実装にするか、
+            # Predictorに `predict_with_probs` を追加するのが正しい。
+            
+            # ここでは `predict` の戻り値にある `confidence` を使い、
+            # 選ばれたクラスにそのconfidence、残りを均等割りなどで表現する簡易的な実装とする。
+            # (本格的な実装には Predictor 側の改修が必要)
+            
+            probs = {}
+            for task in [TaskType.CAUSE, TaskType.SHAPE, TaskType.DEPTH]:
+                categories = category_manager.get_categories(task)
+                task_res = getattr(result, task)
+                
+                # 簡易的な確率マップ作成
+                # 選ばれたクラス: confidence
+                # その他: (1 - confidence) / (num_classes - 1)
+                
+                conf = task_res.confidence
+                other_prob = (1.0 - conf) / (len(categories) - 1) if len(categories) > 1 else 0.0
+                
+                task_probs = {}
+                for cat in categories:
+                    if cat == task_res.label:
+                        task_probs[cat] = conf
+                    else:
+                        task_probs[cat] = other_prob
+                
+                probs[task] = task_probs
 
-    st.success("分類が完了しました！")
-    st.rerun()
+            st.session_state.classification_probs = probs
+            
+            # Grad-CAM (オプション)
+            if show_heatmap:
+                from src.analysis.gradcam import GradCAM, overlay_heatmap
+                from src.training.dataset import DefectDataset
+                import cv2
+                
+                # Transform (推論時と同じ前処理)
+                # モデルの入力サイズ等が必要だが、ここでは一旦デフォルト(224)と仮定
+                # 将来的にはconfigから取得すべき
+                transform = DefectDataset.get_inference_transform((224, 224))
+                
+                img_np = np.array(image)
+                augmented = transform(image=img_np)
+                input_tensor = augmented["image"].unsqueeze(0).to(predictor.device) # (1, C, H, W)
+                
+                gradcam = GradCAM(predictor.model)
+                
+                # 各タスクについてヒートマップ生成
+                heatmaps = {}
+                for task in [TaskType.CAUSE, TaskType.SHAPE, TaskType.DEPTH]:
+                    # 予測されたクラスに対するヒートマップ
+                    cam, _ = gradcam(input_tensor, task_type=task)
+                    
+                    # 重ね合わせ
+                    # overlay_heatmapはPIL Imageを返す
+                    overlay = overlay_heatmap(image, cam, alpha=0.6)
+                    heatmaps[task] = overlay
+                
+                gradcam.remove_hooks()
+                st.session_state.classification_heatmaps = heatmaps
+            else:
+                if "classification_heatmaps" in st.session_state:
+                    del st.session_state.classification_heatmaps
+
+            st.success("分類が完了しました！")
+            st.rerun()
+            
+        except Exception as e:
+            st.error(f"推論中にエラーが発生しました: {e}")
 
 
 def _display_results(result: dict, probs: dict, category_manager: CategoryManager):

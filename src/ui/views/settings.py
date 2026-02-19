@@ -123,6 +123,27 @@ def _show_model_settings_tab():
 
     st.markdown("---")
 
+    # ONNXエクスポート
+    st.markdown("#### 📦 モデルエクスポート")
+    st.markdown("現在のモデルをONNX形式でエクスポートします。")
+    
+    if st.button("🚀 ONNXへ変換", key="export_onnx"):
+        from src.core.constants import BEST_MODEL_PATH
+        if not BEST_MODEL_PATH.exists():
+            st.error("モデルファイルが見つかりません。")
+        else:
+            with st.spinner("ONNX変換中..."):
+                try:
+                    from src.deploy.onnx_exporter import export_to_onnx
+                    
+                    output_path = BEST_MODEL_PATH.parent / "model.onnx"
+                    export_to_onnx(BEST_MODEL_PATH, output_path)
+                    st.success(f"エクスポート完了: `{output_path}`")
+                except Exception as e:
+                    st.error(f"エクスポート失敗: {e}")
+
+    st.markdown("---")
+
     # デフォルト設定
     st.markdown("#### ⚙️ デフォルト設定")
 

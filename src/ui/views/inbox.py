@@ -130,32 +130,21 @@ def _get_index(options, value):
 def _add_to_dataset(image_path: Path, json_path: Path, cause, shape, depth):
     """データセットに追加処理"""
     try:
-        # 1. 画像の移動（リネームして衝突回避）
-        new_filename = image_path.name
-        # もし同名ファイルがあればタイムスタンプなどを付与するなどすべきだが、
-        # 今回はUUID付きなので基本大丈夫。念のためチェック
-        target_image_path = TRAIN_IMAGES_DIR / new_filename
-        if target_image_path.exists():
-            st.warning("同名のファイルが存在します。")
-            timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
-            target_image_path = TRAIN_IMAGES_DIR / f"{timestamp}_{new_filename}"
-            
-        shutil.move(str(image_path), str(target_image_path))
-        
-        # 2. アノテーションの追記
         data_manager = DataManager()
-        data_manager.add_sample(
-            file_name=target_image_path.name,
+        
+        # DataManagerにファイル移動と登録を委譲
+        target_path = data_manager.import_file(
+            src_path=image_path,
             cause=cause,
             shape=shape,
             depth=depth,
             source="inbox"
         )
             
-        # 3. 元のJSON削除
+        # 元のJSON削除
         json_path.unlink()
         
-        st.success(f"データセットに追加しました: {target_image_path.name}")
+        st.success(f"データセットに追加しました: {target_path.name}")
         st.rerun()
         
     except Exception as e:
