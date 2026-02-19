@@ -26,6 +26,7 @@ class ClassificationResult:
     label: str
     confidence: float
     class_id: int
+    probabilities: dict[str, float]
 
 
 @dataclass
@@ -101,10 +102,15 @@ class DefectPredictor:
 
             label = self.category_manager.index_to_name(task_name, class_id)
 
+            # 全クラスの確率
+            all_probs = probs[0].cpu().tolist()
+            prob_map = {self.category_manager.index_to_name(task_name, i): float(p) for i, p in enumerate(all_probs)}
+
             results[task_name] = ClassificationResult(
                 label=label,
                 confidence=confidence if return_confidence else 0.0,
                 class_id=class_id,
+                probabilities=prob_map,
             )
 
         return PredictionResult(

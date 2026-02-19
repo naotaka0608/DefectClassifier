@@ -48,27 +48,31 @@ def show_classify_page():
                 heatmaps = st.session_state.classification_heatmaps
                 
                 # 表示モード選択
-                view_options = ["オリジナル"] + [f"Heatmap: {t.value}" for t in [TaskType.CAUSE, TaskType.SHAPE, TaskType.DEPTH]]
+                task_name_map = {TaskType.CAUSE: "原因", TaskType.SHAPE: "形状", TaskType.DEPTH: "深さ"}
+                view_options = ["オリジナル"] + [f"ヒートマップ: {task_name_map[t]}" for t in [TaskType.CAUSE, TaskType.SHAPE, TaskType.DEPTH]]
                 selected_view = st.radio("表示画像", view_options, horizontal=True, label_visibility="collapsed")
                 
                 if selected_view == "オリジナル":
-                    image_viewer(uploaded_file, caption="アップロード画像")
+                    image_viewer(uploaded_file, caption="アップロード画像", width=350)
                 else:
-                    # 'Heatmap: cause' -> 'cause'
-                    task_val = selected_view.split(": ")[1]
-                    # valueからTaskTypeを逆引き
-                    target_task = next(t for t in heatmaps.keys() if t.value == task_val)
+                    # 'ヒートマップ: 原因' -> '原因' -> TaskType.CAUSE
+                    selected_label = selected_view.split(": ")[1]
+                    target_task = next(t for t, name in task_name_map.items() if name == selected_label)
                     
                     if target_task in heatmaps:
-                        st.image(heatmaps[target_task], caption=f"Grad-CAM: {target_task.name}", use_column_width=True)
+                        st.image(heatmaps[target_task], caption=f"Grad-CAM: {task_name_map[target_task]}", width=350)
             else:
-                image_viewer(uploaded_file, caption="アップロード画像")
+                image_viewer(uploaded_file, caption="アップロード画像", width=350)
 
             show_heatmap = st.checkbox("🔍 判断根拠(ヒートマップ)を表示", value=False, help="AIが注目した領域を可視化します")
 
             # 分類実行ボタン
             if st.button("🔍 分類を実行", width="stretch"):
                 _run_classification(image, category_manager, show_heatmap)
+            
+            if "classification_error" in st.session_state:
+                st.error(st.session_state.classification_error)
+                del st.session_state.classification_error
 
     with col2:
         st.markdown("### 📊 分類結果")
@@ -81,7 +85,6 @@ def show_classify_page():
             _display_results(result, probs, category_manager)
         else:
             st.info("画像をアップロードして分類を実行してください。")
-
 
 @st.cache_resource
 def _get_predictor() -> "DefectPredictor":
@@ -101,7 +104,12 @@ def _get_predictor() -> "DefectPredictor":
             return None
             
     try:
-        predictor = DefectPredictor(model_path=model_path)
+        # PredictorにはCategoryManagerが必要
+        from src.core.category_manager import CategoryManager
+        from src.core.config import DEFAULT_CATEGORIES_CONFIG
+        
+        category_manager = CategoryManager(DEFAULT_CATEGORIES_CONFIG)
+        predictor = DefectPredictor(model_path=model_path, category_manager=category_manager)
         return predictor
     except Exception as e:
         st.error(f"モデルのロードに失敗しました: {e}")
@@ -123,47 +131,31 @@ def _run_classification(image: Image.Image, category_manager: CategoryManager, s
             result = predictor.predict(image_np)
             
             # 結果をセッションに保存
-            # UI表示用に辞書形式に変換
             st.session_state.classification_result = {
                 TaskType.CAUSE: result.cause.label,
                 TaskType.SHAPE: result.shape.label,
                 TaskType.DEPTH: result.depth.label,
             }
             
-            # 確率分布を取得 (predictメソッドは予測結果のみ返すため、詳細が必要なら修正が必要だが
-            # 現状のDefectPredictor.predictは確率分布を返さない。
-            # 今回はシンプルに、確信度を100%として表示するか、
-            # あるいはPredictorを改造して確率分布を返すようにする必要がある。)
-            
-            # NOTE: 現在のUIは確率分布グラフを要求しているため、本当は predict_proba 的なものが必要。
-            # しかし DefectPredictor にはその機能が明示されていない。
-            # とりあえず、予測されたクラスの信頼度を使用し、他は0とする簡易実装にするか、
-            # Predictorに `predict_with_probs` を追加するのが正しい。
-            
-            # ここでは `predict` の戻り値にある `confidence` を使い、
-            # 選ばれたクラスにそのconfidence、残りを均等割りなどで表現する簡易的な実装とする。
-            # (本格的な実装には Predictor 側の改修が必要)
-            
             probs = {}
             for task in [TaskType.CAUSE, TaskType.SHAPE, TaskType.DEPTH]:
                 categories = category_manager.get_categories(task)
                 task_res = getattr(result, task)
                 
-                # 簡易的な確率マップ作成
-                # 選ばれたクラス: confidence
-                # その他: (1 - confidence) / (num_classes - 1)
-                
-                conf = task_res.confidence
-                other_prob = (1.0 - conf) / (len(categories) - 1) if len(categories) > 1 else 0.0
-                
-                task_probs = {}
-                for cat in categories:
-                    if cat == task_res.label:
-                        task_probs[cat] = conf
-                    else:
-                        task_probs[cat] = other_prob
-                
-                probs[task] = task_probs
+                if hasattr(task_res, "probabilities") and task_res.probabilities:
+                    probs[task] = task_res.probabilities
+                else:
+                    conf = task_res.confidence
+                    other_prob = (1.0 - conf) / (len(categories) - 1) if len(categories) > 1 else 0.0
+                    
+                    task_probs = {}
+                    for cat in categories:
+                        if cat == task_res.label:
+                            task_probs[cat] = conf
+                        else:
+                            task_probs[cat] = other_prob
+                    
+                    probs[task] = task_probs
 
             st.session_state.classification_probs = probs
             
@@ -171,12 +163,10 @@ def _run_classification(image: Image.Image, category_manager: CategoryManager, s
             if show_heatmap:
                 from src.analysis.gradcam import GradCAM, overlay_heatmap
                 from src.training.dataset import DefectDataset
-                import cv2
                 
                 # Transform (推論時と同じ前処理)
-                # モデルの入力サイズ等が必要だが、ここでは一旦デフォルト(224)と仮定
-                # 将来的にはconfigから取得すべき
-                transform = DefectDataset.get_inference_transform((224, 224))
+                # FIX: image_sizeをkwargsとして渡す
+                transform = DefectDataset.get_inference_transform(image_size=[224, 224])
                 
                 img_np = np.array(image)
                 augmented = transform(image=img_np)
@@ -205,7 +195,10 @@ def _run_classification(image: Image.Image, category_manager: CategoryManager, s
             st.rerun()
             
         except Exception as e:
-            st.error(f"推論中にエラーが発生しました: {e}")
+            # エラーメッセージをセッションに保存して表示
+            # st.errorだとrerunで消える可能性があるため
+            st.session_state.classification_error = f"推論中にエラーが発生しました: {e}"
+            st.rerun()
 
 
 def _display_results(result: dict, probs: dict, category_manager: CategoryManager):
@@ -242,7 +235,13 @@ def _display_results(result: dict, probs: dict, category_manager: CategoryManage
             )
 
     st.markdown("---")
-
+    
+    # 信頼度チェック
+    if result.get(TaskType.CAUSE) and probs.get(TaskType.CAUSE):
+        cause_conf = probs[TaskType.CAUSE][result[TaskType.CAUSE]]
+        if cause_conf < 0.4:  # 40%未満は警告
+            st.warning(f"⚠️ 原因分類の確信度が低いです ({cause_conf:.1%})。判定結果は信頼できない可能性があります。")
+            
     # 確率分布グラフ
     st.markdown("### 📈 確率分布")
 
@@ -274,8 +273,8 @@ def _display_results(result: dict, probs: dict, category_manager: CategoryManage
                 yaxis_title="確率 (%)",
                 yaxis_range=[0, 100],
                 showlegend=False,
-                height=300,
-                margin=dict(l=40, r=40, t=60, b=40),
+                height=250,
+                margin=dict(l=40, r=40, t=40, b=40),
             )
 
-            st.plotly_chart(fig, width="stretch")
+            st.plotly_chart(fig, use_container_width=True)

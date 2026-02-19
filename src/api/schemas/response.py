@@ -12,6 +12,7 @@ class ClassificationResultSchema(BaseModel):
     label: str
     confidence: float
     class_id: int
+    probabilities: dict[str, float]
 
 
 class PredictResponse(BaseModel):
