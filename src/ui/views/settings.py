@@ -92,12 +92,20 @@ def _show_model_settings_tab():
     # 現在のモデル
     st.markdown("#### 📌 現在のモデル")
 
+    model_path = CHECKPOINTS_DIR / "best_model.pth"
+    if model_path.exists():
+        import datetime
+        mtime = datetime.datetime.fromtimestamp(model_path.stat().st_mtime)
+        metrics_str = "更新済み (詳細不明)"
+    else:
+        mtime = "不明"
+        metrics_str = "不明"
+
     model_info = {
-        "モデルパス": str(CHECKPOINTS_DIR / "best_model.pth"),
+        "モデルパス": str(model_path),
         "バックボーン": "ResNet50",
-        "学習日時": "2026-02-05 09:00",
-        "エポック数": 200,
-        "最終精度": "95.8%",
+        "学習日時": str(mtime),
+        "ステータス": "利用可能" if model_path.exists() else "未学習",
     }
 
     for key, value in model_info.items():

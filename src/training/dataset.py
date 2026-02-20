@@ -96,10 +96,10 @@ class DefectDataset(Dataset):
                         saturation=cfg.color_jitter["saturation"],
                         hue=cfg.color_jitter["hue"],
                     ),
-                    A.GaussNoise(
-                        var_limit=tuple(cfg.gaussian_noise["var_limit"]),
-                        p=cfg.gaussian_noise["probability"],
-                    ),
+                    # A.GaussNoise(
+                    #     var_limit=tuple(cfg.gaussian_noise["var_limit"]),
+                    #     p=cfg.gaussian_noise["probability"],
+                    # ),
                     A.Normalize(
                         mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]
                     ),
