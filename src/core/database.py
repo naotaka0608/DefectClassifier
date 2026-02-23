@@ -3,6 +3,7 @@
 import sqlite3
 from pathlib import Path
 from datetime import datetime
+import json
 from typing import List, Dict, Any, Optional
 from src.core.constants import DATA_DIR
 from src.core.logger import logger
@@ -38,7 +39,8 @@ class Database:
                     inference_time_ms REAL,
                     model_version TEXT,
                     is_anomaly INTEGER DEFAULT 0,
-                    anomaly_score REAL DEFAULT 1.0
+                    anomaly_score REAL DEFAULT 1.0,
+                    details_json TEXT
                 )
             """)
             # 既存のテーブルにカラムがない場合の追加 (migration)
@@ -48,6 +50,10 @@ class Database:
                 pass
             try:
                 cursor.execute("ALTER TABLE classification_history ADD COLUMN anomaly_score REAL DEFAULT 1.0")
+            except sqlite3.OperationalError:
+                pass
+            try:
+                cursor.execute("ALTER TABLE classification_history ADD COLUMN details_json TEXT")
             except sqlite3.OperationalError:
                 pass
             conn.commit()
@@ -62,7 +68,8 @@ class Database:
         inference_time_ms: float,
         model_version: str = "unknown",
         is_anomaly: bool = False,
-        anomaly_score: float = 1.0
+        anomaly_score: float = 1.0,
+        details: Optional[Dict[str, Any]] = None
     ) -> int:
         """判定結果を保存"""
         timestamp = datetime.now().isoformat()
@@ -76,15 +83,17 @@ class Database:
                     shape_label, shape_confidence,
                     depth_label, depth_confidence,
                     inference_time_ms, model_version,
-                    is_anomaly, anomaly_score
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    is_anomaly, anomaly_score,
+                    details_json
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """, (
                 timestamp, image_path,
                 cause.get("label"), cause.get("confidence"),
                 shape.get("label"), shape.get("confidence"),
                 depth.get("label"), depth.get("confidence"),
                 inference_time_ms, model_version,
-                1 if is_anomaly else 0, anomaly_score
+                1 if is_anomaly else 0, anomaly_score,
+                json.dumps(details) if details else None
             ))
             conn.commit()
             return cursor.lastrowid

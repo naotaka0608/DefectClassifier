@@ -75,7 +75,12 @@ class DefectHandler(FileSystemEventHandler):
                 inference_time_ms=inference_time,
                 model_version=self.predictor.model_version,
                 is_anomaly=result.is_anomaly,
-                anomaly_score=result.anomaly_score
+                anomaly_score=result.anomaly_score,
+                details={
+                    "cause": result.cause.probabilities,
+                    "shape": result.shape.probabilities,
+                    "depth": result.depth.probabilities
+                }
             )
             logger.info(f"Auto-classification successful for {file_path.name}: {result.cause.label}")
             

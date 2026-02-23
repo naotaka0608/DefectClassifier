@@ -106,7 +106,12 @@ def _save_inference_log(image: Image.Image, result: PredictResponse, config: Opt
             inference_time_ms=result.inference_time_ms,
             model_version=result.model_version,
             is_anomaly=getattr(result, "is_anomaly", False),
-            anomaly_score=getattr(result, "anomaly_score", 1.0)
+            anomaly_score=getattr(result, "anomaly_score", 1.0),
+            details={
+                "cause": result.cause.probabilities,
+                "shape": result.shape.probabilities,
+                "depth": result.depth.probabilities
+            }
         )
         logger.info("Saved result to database")
     except Exception as e:

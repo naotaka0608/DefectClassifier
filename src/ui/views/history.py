@@ -58,6 +58,22 @@ def show_history_page():
                 status_text = "判定不能 (未知)" if item.get("is_anomaly") else "正常"
                 st.markdown(f"**ステータス**: :{status_color}[{status_text}]")
                 
+                # 確率分布の表示
+                details_json = item.get("details_json")
+                if details_json:
+                    import json
+                    try:
+                        details = json.loads(details_json)
+                        with st.expander("📊 確率分布の詳細"):
+                            for task, probs in details.items():
+                                st.markdown(f"**{task.capitalize()}**")
+                                # 上位5つをフォーマットして表示
+                                sorted_probs = sorted(probs.items(), key=lambda x: x[1], reverse=True)[:5]
+                                for label, val in sorted_probs:
+                                    st.write(f"- {label}: **{val:.2%}** ({val})")
+                    except:
+                        pass
+                
                 st.markdown("---")
                 st.caption(f"推論時間: {item['inference_time_ms']:.1f}ms | モデル: {item['model_version']}")
                 

@@ -216,7 +216,8 @@ def _run_classification(image: Image.Image, category_manager: CategoryManager, s
                     inference_time_ms=getattr(result, "inference_time_ms", 0.0),
                     model_version=predictor.model_version,
                     is_anomaly=result.is_anomaly,
-                    anomaly_score=result.anomaly_score
+                    anomaly_score=result.anomaly_score,
+                    details=probs
                 )
             except Exception as e:
                 import logger
@@ -311,4 +312,4 @@ def _display_results(result: dict, probs: dict, category_manager: CategoryManage
                 margin=dict(l=40, r=40, t=40, b=40),
             )
 
-            st.plotly_chart(fig, use_container_width=True)
+            st.plotly_chart(fig, width='stretch')

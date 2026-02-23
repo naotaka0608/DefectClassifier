@@ -79,7 +79,7 @@ class ReportGenerator:
         # 判定結果
         elements.append(Paragraph("■ 分類結果", styles['Heading2']))
         res_data = [
-            ["タスク", "ラベル", "確信度"],
+            ["タスク", "第1候補ラベル", "確信度"],
             ["原因", result.get("cause_label", "-"), f"{result.get('cause_confidence', 0):.1%}"],
             ["形状", result.get("shape_label", "-"), f"{result.get('shape_confidence', 0):.1%}"],
             ["深さ", result.get("depth_label", "-"), f"{result.get('depth_confidence', 0):.1%}"],
@@ -91,6 +91,34 @@ class ReportGenerator:
             ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
         ]))
         elements.append(rt)
+        
+        # 他の候補の表示
+        details_json = result.get("details_json")
+        if details_json:
+            import json
+            try:
+                details = json.loads(details_json)
+                elements.append(Spacer(1, 10))
+                elements.append(Paragraph("■ 他の候補 (確率分布)", styles['Heading3']))
+                
+                other_rows = [["タスク", "候補ラベル", "確信度"]]
+                for task, probs in details.items():
+                    # 上位3つ（自分以外）を取得しようとするが、正規化されているので上位3つを出す
+                    sorted_items = sorted(probs.items(), key=lambda x: x[1], reverse=True)[:3]
+                    for i, (label, conf) in enumerate(sorted_items):
+                        task_name = f"{task} ({i+1})" if i > 0 else task
+                        other_rows.append([task_name, label, f"{conf:.2%}"])
+                
+                ot = Table(other_rows, colWidths=[100, 200, 150])
+                ot.setStyle(TableStyle([
+                    ('FONTNAME', (0, 0), (-1, -1), self.font_name),
+                    ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
+                    ('SIZE', (0, 0), (-1, -1), 8),
+                ]))
+                elements.append(ot)
+            except:
+                pass
+
         elements.append(Spacer(1, 20))
         
         # 画像表示
