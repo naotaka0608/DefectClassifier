@@ -54,7 +54,7 @@ def main():
         st.markdown("### 📋 メニュー")
         page = st.radio(
             "ページを選択",
-            ["📥 受信トレイ", "📂 データセット", "📚 学習", "📊 評価", "🎯 分類", "⚙️ 設定"],
+            ["📥 受信トレイ", "📂 データセット", "📚 学習", "📊 評価", "🎯 分類", "📈 履歴", "⚙️ 設定"],
             label_visibility="collapsed",
         )
 
@@ -83,6 +83,10 @@ def main():
         from src.ui.views.classify import show_classify_page
 
         show_classify_page()
+    elif page == "📈 履歴":
+        from src.ui.views.history import show_history_page
+
+        show_history_page()
     elif page == "⚙️ 設定":
         from src.ui.views.settings import show_settings_page
 

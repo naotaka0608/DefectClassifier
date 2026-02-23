@@ -15,7 +15,7 @@ def show_settings_page():
     st.markdown("システム設定とカテゴリの管理ができます。")
 
     # タブ
-    tab1, tab2, tab3 = st.tabs(["📂 カテゴリ管理", "🧠 モデル設定", "ℹ️ システム情報"])
+    tab1, tab2, tab3, tab4 = st.tabs(["📂 カテゴリ管理", "🧠 モデル設定", "👀 フォルダ監視", "ℹ️ システム情報"])
 
     with tab1:
         _show_category_management_tab()
@@ -24,6 +24,9 @@ def show_settings_page():
         _show_model_settings_tab()
 
     with tab3:
+        _show_monitor_settings_tab()
+
+    with tab4:
         _show_system_info_tab()
 
 
@@ -170,6 +173,61 @@ def _show_model_settings_tab():
 
     if st.button("💾 デフォルト設定を保存", width="stretch"):
         st.success("デフォルト設定を保存しました！")
+
+
+def _show_monitor_settings_tab():
+    """フォルダ監視設定タブ"""
+    st.markdown("### 👀 フォルダ監視")
+    st.markdown("指定したフォルダに画像が保存されると、自動的にAI判定を実行します。")
+
+    # 初期値
+    default_monitor_dir = str(DATA_DIR / "monitor")
+    
+    monitor_path = st.text_input(
+        "監視対象フォルダパス",
+        value=st.session_state.get("monitor_path", default_monitor_dir),
+        help="新しい画像（jpg, png等）を監視するローカルフォルダ"
+    )
+    st.session_state.monitor_path = monitor_path
+
+    # Watcher の状態管理
+    from src.services.watcher import DefectWatcher
+    
+    is_running = False
+    if "defect_watcher" in st.session_state and st.session_state.defect_watcher:
+        is_running = True
+
+    st.markdown(f"**現在のステータス**: {'🟢 実行中' if is_running else '⚪ 停止中'}")
+
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        if st.button("▶️ 監視開始", disabled=is_running, width="stretch", type="primary"):
+            try:
+                watcher = DefectWatcher(monitor_path)
+                watcher.start()
+                st.session_state.defect_watcher = watcher
+                st.success(f"監視を開始しました: {monitor_path}")
+                st.rerun()
+            except Exception as e:
+                st.error(f"監視の開始に失敗しました: {e}")
+
+    with col2:
+        if st.button("⏹️ 監視停止", disabled=not is_running, width="stretch"):
+            if "defect_watcher" in st.session_state:
+                st.session_state.defect_watcher.stop()
+                st.session_state.defect_watcher = None
+                st.info("監視を停止しました。")
+                st.rerun()
+
+    st.markdown("---")
+    st.markdown("#### ✅ 自動判定の流れ")
+    st.markdown("""
+    1.  指定したフォルダに画像ファイルが置かれます。
+    2.  AIが自動的に読み込み、分類を実行します。
+    3.  結果は背景でデータベースに保存されます。
+    4.  「📈 履歴」ページから自動判定の結果を確認できます。
+    """)
 
 
 

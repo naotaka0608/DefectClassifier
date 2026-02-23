@@ -12,6 +12,8 @@ from src.core.category_manager import CategoryManager
 from src.core.config import DEFAULT_CATEGORIES_CONFIG
 from src.core.types import TaskType
 from src.ui.components.image_viewer import image_viewer
+from src.core.database import db
+from src.core.constants import HISTORY_DIR
 
 if TYPE_CHECKING:
     from src.inference.predictor import DefectPredictor
@@ -135,6 +137,8 @@ def _run_classification(image: Image.Image, category_manager: CategoryManager, s
                 TaskType.CAUSE: result.cause.label,
                 TaskType.SHAPE: result.shape.label,
                 TaskType.DEPTH: result.depth.label,
+                "is_anomaly": result.is_anomaly,
+                "anomaly_score": result.anomaly_score,
             }
             
             probs = {}
@@ -191,6 +195,33 @@ def _run_classification(image: Image.Image, category_manager: CategoryManager, s
                 if "classification_heatmaps" in st.session_state:
                     del st.session_state.classification_heatmaps
 
+            # Database に保存
+            try:
+                # 画像を history フォルダに保存
+                import uuid
+                from datetime import datetime
+                HISTORY_DIR.mkdir(parents=True, exist_ok=True)
+                
+                timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                image_filename = f"{timestamp}_{uuid.uuid4().hex[:8]}.jpg"
+                image_path = HISTORY_DIR / image_filename
+                image.save(image_path, quality=95)
+                
+                # DB 保存
+                db.save_result(
+                    image_path=str(image_path),
+                    cause={"label": result.cause.label, "confidence": result.cause.confidence},
+                    shape={"label": result.shape.label, "confidence": result.shape.confidence},
+                    depth={"label": result.depth.label, "confidence": result.depth.confidence},
+                    inference_time_ms=getattr(result, "inference_time_ms", 0.0),
+                    model_version=predictor.model_version,
+                    is_anomaly=result.is_anomaly,
+                    anomaly_score=result.anomaly_score
+                )
+            except Exception as e:
+                import logger
+                logger.error(f"Failed to save history: {e}")
+
             st.success("分類が完了しました！")
             st.rerun()
             
@@ -237,7 +268,10 @@ def _display_results(result: dict, probs: dict, category_manager: CategoryManage
     st.markdown("---")
     
     # 信頼度チェック
-    if result.get(TaskType.CAUSE) and probs.get(TaskType.CAUSE):
+    if result.get("is_anomaly"):
+        st.error(f"⚠️ **判定不能（未知のデータ）**: 入力画像が学習データと大きく異なっている可能性があります (信頼度スコア: {result.get('anomaly_score', 0):.1%})。結果が不正確な可能性があります。")
+
+    elif result.get(TaskType.CAUSE) and probs.get(TaskType.CAUSE):
         cause_conf = probs[TaskType.CAUSE][result[TaskType.CAUSE]]
         if cause_conf < 0.4:  # 40%未満は警告
             st.warning(f"⚠️ 原因分類の確信度が低いです ({cause_conf:.1%})。判定結果は信頼できない可能性があります。")

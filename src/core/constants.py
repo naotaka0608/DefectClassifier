@@ -4,6 +4,7 @@ from pathlib import Path
 DATA_DIR = Path("data")
 PROCESSED_DIR = DATA_DIR / "processed"
 INBOX_DIR = DATA_DIR / "inbox"
+HISTORY_DIR = DATA_DIR / "history"
 CHECKPOINTS_DIR = Path("checkpoints")
 CONFIG_DIR = Path("config")
 

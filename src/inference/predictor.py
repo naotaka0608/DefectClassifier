@@ -36,6 +36,8 @@ class PredictionResult:
     cause: ClassificationResult
     shape: ClassificationResult
     depth: ClassificationResult
+    is_anomaly: bool = False
+    anomaly_score: float = 1.0
 
 
 class DefectPredictor:
@@ -58,9 +60,11 @@ class DefectPredictor:
         self.model.eval()
 
         # 前処理
-        # 推論時の設定 (デフォルトは 224x224)
         from src.training.dataset import DefectDataset
         self.transform = DefectDataset.get_inference_transform(image_size=[224, 224])
+
+        from src.inference.anomaly_detector import AnomalyDetector
+        self.anomaly_detector = AnomalyDetector(threshold=0.4)
 
         self.model_version = Path(model_path).stem
 
@@ -113,10 +117,14 @@ class DefectPredictor:
                 probabilities=prob_map,
             )
 
+        is_anomaly, anomaly_score = self.anomaly_detector.detect(outputs)
+
         return PredictionResult(
             cause=results[TaskType.CAUSE],
             shape=results[TaskType.SHAPE],
             depth=results[TaskType.DEPTH],
+            is_anomaly=is_anomaly,
+            anomaly_score=anomaly_score,
         )
 
     @torch.no_grad()

@@ -24,6 +24,7 @@ from src.api.schemas.response import (
 from src.core.category_manager import CategoryManager
 from src.core.constants import CHECKPOINTS_DIR, INBOX_DIR
 from src.inference.predictor import DefectPredictor
+from src.core.database import db
 
 router = APIRouter(prefix="/api/v1", tags=["prediction"])
 
@@ -94,6 +95,22 @@ def _save_inference_log(image: Image.Image, result: PredictResponse, config: Opt
             
     except Exception as e:
         logger.error(f"Failed to save inference log: {e}")
+
+    # Database に保存 (画像保存とは独立して実行)
+    try:
+        db.save_result(
+            image_path=str(image_path) if 'image_path' in locals() else "received_via_api",
+            cause=result.cause.model_dump(),
+            shape=result.shape.model_dump(),
+            depth=result.depth.model_dump(),
+            inference_time_ms=result.inference_time_ms,
+            model_version=result.model_version,
+            is_anomaly=getattr(result, "is_anomaly", False),
+            anomaly_score=getattr(result, "anomaly_score", 1.0)
+        )
+        logger.info("Saved result to database")
+    except Exception as e:
+        logger.error(f"Failed to save to database: {e}")
 
 
 def _to_predict_response(
